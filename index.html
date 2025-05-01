@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <title>Gamasys Fit Challenge 2025 | Weekly Rank</title>
+  <style>
+    /* 主題色 */
+    :root {
+      --navy:    #0D1C2E;
+      --accent:  #E56B1F;
+      --lightN:  #1C304B;
+      --text:    #FFFFFF;
+      --border:  #2A3A55;
+    }
+    * { box-sizing: border-box; }
+    body {
+      background: var(--navy);
+      color: var(--text);
+      font-family: Arial, sans-serif;
+      padding: 20px 20px 10% 20px;
+      margin: 0;
+      height: 100vh;
+    }
+    h1, h2 {
+      text-align: center;
+      color: var(--accent);
+      margin: 0.5em 0;
+    }
+    #week-range {
+      text-align: center;
+      margin-bottom: 1em;
+      font-size: 1em;
+      color: var(--text);
+    }
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+      margin-bottom: 10%;
+      min-height: 90%;
+    }
+    section {
+      flex: 1 1 300px;
+      background: var(--lightN);
+      padding: 15px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    section h2 {
+      margin-top: 0;
+      font-size: 1.2em;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5em;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background: var(--accent);
+      color: var(--text);
+    }
+    tr:nth-child(even) {
+      background: var(--navy);
+    }
+    /* 行移动动画 */
+    tr {
+      transition: transform 0.5s ease;
+    }
+    @media (max-width: 600px) {
+      .container { flex-direction: column; }
+      section { flex: 1 1 100%; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Gamasys Fit Challenge 2025</h1>
+  <h2>週排名 | Weekly Rank</h2>
+  <p id="week-range"></p>
+  <div class="container">
+    <section id="personal">
+      <h2>1. 個人分數</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>暱稱</th>
+            <th>本週分數</th>
+            <th>週排名</th>
+          </tr>
+        </thead>
+        <tbody id="personalBody"></tbody>
+      </table>
+    </section>
+    <section id="team">
+      <h2>2. 團隊排名</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>團隊名稱</th>
+            <th>週平均分數</th>
+            <th>週團隊排名</th>
+          </tr>
+        </thead>
+        <tbody id="teamBody"></tbody>
+      </table>
+    </section>
+    <section id="region">
+      <h2>3. 地區排名</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>地區名稱</th>
+            <th>週平均分數</th>
+            <th>週地區排名</th>
+          </tr>
+        </thead>
+        <tbody id="regionBody"></tbody>
+      </table>
+    </section>
+  </div>
+  <script>
+    const SHEET_ID         = '1MQNLnE7_HfVZKM3HSN03TFDV0BX-4IaNNnbYMhZ5_qQ';
+    const SHEET_NAME       = 'Main';
+    const POLL_INTERVAL_MS = 10000;
+
+    // 顯示本週範圍
+    (function showWeekRange() {
+      const now = new Date();
+      const day = now.getDay(); // 週日=0, 週一=1...
+      const diffToMon = (day + 6) % 7;
+      const mon = new Date(now);
+      mon.setDate(now.getDate() - diffToMon);
+      const sun = new Date(mon);
+      sun.setDate(mon.getDate() + 6);
+      function fmt(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dt = String(d.getDate()).padStart(2, '0');
+        return `${y}/${m}/${dt}`;
+      }
+      document.getElementById('week-range').textContent = `${fmt(mon)} ~ ${fmt(sun)}`;
+    })();
+
+    async function fetchTable() {
+      const url =
+        `https://docs.google.com/spreadsheets/d/${SHEET_ID}` +
+        `/gviz/tq?sheet=${encodeURIComponent(SHEET_NAME)}` +
+        `&tqx=out:json`;
+      const res = await fetch(url);
+      const txt = await res.text();
+      const json = txt.substring(txt.indexOf('(') + 1, txt.lastIndexOf(')'));
+      return JSON.parse(json).table;
+    }
+
+    function findIndex(cols, pattern) {
+      return cols.findIndex(h => new RegExp(pattern, 'i').test(h));
+    }
+
+    function getPositions(tbody) {
+      const positions = {};
+      Array.from(tbody.children).forEach(row => {
+        positions[row.children[0].textContent] = row.getBoundingClientRect().top;
+      });
+      return positions;
+    }
+
+    async function updateSection(tbody, buildRows) {
+      const oldPos = getPositions(tbody);
+      tbody.innerHTML = '';
+      buildRows();
+      Array.from(tbody.children).forEach(row => {
+        const key = row.children[0].textContent;
+        const newTop = row.getBoundingClientRect().top;
+        const delta = oldPos[key] - newTop || 0;
+        row.style.transform = `translateY(${delta}px)`;
+        requestAnimationFrame(() => (row.style.transform = ''));
+      });
+    }
+
+    async function update() {
+      const table = await fetchTable();
+      const cols  = table.cols.map(c => c.label);
+      const rows  = table.rows;
+
+      const iName       = findIndex(cols, '名稱');
+      const iScore      = findIndex(cols, '本週個人分數');
+      const iRank       = findIndex(cols, '週排名');
+      const iWeight     = findIndex(cols, '本週體重|Weekly Weight');
+      const iBodyFat    = findIndex(cols, '本週體脂肪|Weekly Body Fat');
+      const iTeamName   = findIndex(cols, '團隊名稱');
+      const iTeamRank   = findIndex(cols, '週團隊排名');
+      const iRegionName = findIndex(cols, '所在地|地區');
+      const iRegionRank = findIndex(cols, '週地區排名');
+
+      const pBody = document.getElementById('personalBody');
+      const tBody = document.getElementById('teamBody');
+      const rBody = document.getElementById('regionBody');
+
+      // 個人分數 (過濾無本週體重/體脂/分數為0者)
+      await updateSection(pBody, () => {
+        rows.filter(r => {
+          const hasName   = r.c[iName]?.v;
+          const hasWeight = r.c[iWeight]?.v;
+          const hasFat    = r.c[iBodyFat]?.v;
+          const score     = parseFloat(r.c[iScore]?.v) || 0;
+          return hasName && hasWeight && hasFat && score > 0;
+        })
+        .sort((a, b) => (a.c[iRank]?.v || Infinity) - (b.c[iRank]?.v || Infinity))
+        .forEach(r => {
+          const tr = document.createElement('tr');
+          [iName, iScore, iRank].forEach(i => {
+            const td = document.createElement('td');
+            td.textContent = r.c[i]?.v;
+            tr.appendChild(td);
+          });
+          pBody.appendChild(tr);
+        });
+      });
+
+      // 團隊排名 (過濾分數為0者)
+      const teamStats = {};
+      rows.forEach(r => {
+        const s = parseFloat(r.c[iScore]?.v) || 0;
+        if (s <= 0) return;
+        const t  = r.c[iTeamName]?.v;
+        const rk = r.c[iTeamRank]?.v;
+        if (!t) return;
+        if (!teamStats[t]) teamStats[t] = { sum: 0, cnt: 0, rank: rk };
+        teamStats[t].sum += s;
+        teamStats[t].cnt++;
+      });
+      await updateSection(tBody, () => {
+        Object.entries(teamStats)
+          .map(([name, { sum, cnt, rank }]) => ({ name, avg: cnt ? Math.round((sum/cnt)*1000)/1000 : '', rank: parseFloat(rank) || Infinity }))
+          .sort((a, b) => a.rank - b.rank)
+          .forEach(({ name, avg, rank }) => {
+            const tr = document.createElement('tr');
+            [name, avg, rank].forEach(val => {
+              const td = document.createElement('td');
+              td.textContent = val;
+              tr.appendChild(td);
+            });
+            tBody.appendChild(tr);
+          });
+      });
+
+      // 地區排名 (過濾分數為0者)
+      const regStats = {};
+      rows.forEach(r => {
+        const s  = parseFloat(r.c[iScore]?.v) || 0;
+        if (s <= 0) return;
+        const rg = r.c[iRegionName]?.v;
+        const rk = r.c[iRegionRank]?.v;
+        if (!rg) return;
+        if (!regStats[rg]) regStats[rg] = { sum: 0, cnt: 0, rank: rk };
+        regStats[rg].sum += s;
+        regStats[rg].cnt++;
+      });
+      await updateSection(rBody, () => {
+        Object.entries(regStats)
+          .map(([region, { sum, cnt, rank }]) => ({ region, avg: cnt ? Math.round((sum/cnt)*1000)/1000 : '', rank: parseFloat(rank) || Infinity }))
+          .sort((a, b) => a.rank - b.rank)
+          .forEach(({ region, avg, rank }) => {
+            const tr = document.createElement('tr');
+            [region, avg, rank].forEach(val => {
+              const td = document.createElement('td');
+              td.textContent = val;
+              tr.appendChild(td);
+            });
+            rBody.appendChild(tr);
+          });
+      });
+    }
+
+    update();
+    setInterval(update, POLL_INTERVAL_MS);
+  </script>
+</body>
+</html>
