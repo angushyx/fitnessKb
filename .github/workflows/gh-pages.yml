@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     permissions:
       pages: write
@@ -15,6 +15,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
+      # 如果需要 build，可以在这里插入：
+      # - name: Build
+      #   run: npm ci && npm run build
+      #   # 然后把下面 path 改成你的输出目录
 
       - name: Upload artifact for Pages
         uses: actions/upload-pages-artifact@v1
