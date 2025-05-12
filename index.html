@@ -69,7 +69,7 @@
     tr:nth-child(even) {
       background: var(--navy);
     }
-    /* 行移动动画 */
+    /* 行移動動畫 */
     tr {
       transition: transform 0.5s ease;
     }
@@ -103,7 +103,7 @@
         <thead>
           <tr>
             <th>團隊名稱</th>
-            <th>週平均分數</th>
+            <th>團隊週平均分</th>
             <th>週團隊排名</th>
           </tr>
         </thead>
@@ -194,6 +194,7 @@
       const iWeight     = findIndex(cols, '本週體重|Weekly Weight');
       const iBodyFat    = findIndex(cols, '本週體脂肪|Weekly Body Fat');
       const iTeamName   = findIndex(cols, '團隊名稱');
+      const iTeamAvg    = findIndex(cols, '團隊週平均分');
       const iTeamRank   = findIndex(cols, '週團隊排名');
       const iRegionName = findIndex(cols, '所在地|地區');
       const iRegionRank = findIndex(cols, '週地區排名');
@@ -223,31 +224,28 @@
         });
       });
 
-      // 團隊排名 (過濾分數為0者)
-      const teamStats = {};
-      rows.forEach(r => {
-        const s = parseFloat(r.c[iScore]?.v) || 0;
-        if (s <= 0) return;
-        const t  = r.c[iTeamName]?.v;
-        const rk = r.c[iTeamRank]?.v;
-        if (!t) return;
-        if (!teamStats[t]) teamStats[t] = { sum: 0, cnt: 0, rank: rk };
-        teamStats[t].sum += s;
-        teamStats[t].cnt++;
-      });
+      // 團隊排名 (使用表格上的團隊週平均分)
       await updateSection(tBody, () => {
-        Object.entries(teamStats)
-          .map(([name, { sum, cnt, rank }]) => ({ name, avg: cnt ? Math.round((sum/cnt)*1000)/1000 : '', rank: parseFloat(rank) || Infinity }))
-          .sort((a, b) => a.rank - b.rank)
-          .forEach(({ name, avg, rank }) => {
-            const tr = document.createElement('tr');
-            [name, avg, rank].forEach(val => {
-              const td = document.createElement('td');
-              td.textContent = val;
-              tr.appendChild(td);
-            });
-            tBody.appendChild(tr);
+        const seen = {};
+        const teams = [];
+        rows.forEach(r => {
+          const name = r.c[iTeamName]?.v;
+          const avg  = r.c[iTeamAvg]?.v;
+          const rk   = parseFloat(r.c[iTeamRank]?.v) || Infinity;
+          if (!name || !avg || seen[name]) return;
+          seen[name] = true;
+          teams.push({ name, avg, rank: rk });
+        });
+        teams.sort((a, b) => a.rank - b.rank)
+             .forEach(({ name, avg, rank }) => {
+          const tr = document.createElement('tr');
+          [name, avg, rank].forEach(val => {
+            const td = document.createElement('td');
+            td.textContent = val;
+            tr.appendChild(td);
           });
+          tBody.appendChild(tr);
+        });
       });
 
       // 地區排名 (過濾分數為0者)
