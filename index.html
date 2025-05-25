@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gamasys Fit Challenge 2025 | Weekly Rank</title>
+  <title>Gamasys Fit Challenge 2025 | Weekly & Monthly Rank</title>
   <style>
     /* 主題色 */
     :root {
@@ -18,9 +18,26 @@
       background: var(--navy);
       color: var(--text);
       font-family: Arial, sans-serif;
-      padding: 20px 20px 10% 20px;
+      padding: 20px;
       margin: 0;
-      height: 100vh;
+    }
+    header {
+      display: flex;
+      justify-content: center;
+      background: var(--lightN);
+      padding: 10px;
+    }
+    header button {
+      background: none;
+      border: none;
+      color: var(--text);
+      padding: 10px 20px;
+      margin: 0 5px;
+      font-size: 1em;
+      cursor: pointer;
+    }
+    header button.active {
+      border-bottom: 2px solid var(--accent);
     }
     h1, h2 {
       text-align: center;
@@ -30,16 +47,13 @@
     #week-range {
       text-align: center;
       margin-bottom: 1em;
-      font-size: 1em;
-      color: var(--text);
     }
     .container {
       display: flex;
       flex-wrap: wrap;
       gap: 20px;
       justify-content: center;
-      margin-bottom: 10%;
-      min-height: 90%;
+      margin-bottom: 2em;
     }
     section {
       flex: 1 1 300px;
@@ -69,10 +83,6 @@
     tr:nth-child(even) {
       background: var(--navy);
     }
-    /* 行移動動畫 */
-    tr {
-      transition: transform 0.5s ease;
-    }
     @media (max-width: 600px) {
       .container { flex-direction: column; }
       section { flex: 1 1 100%; }
@@ -80,204 +90,281 @@
   </style>
 </head>
 <body>
-  <h1>Gamasys Fit Challenge 2025</h1>
-  <h2>週排名 | Weekly Rank</h2>
-  <p id="week-range"></p>
-  <div class="container">
-    <section id="personal">
-      <h2>1. 個人分數</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>暱稱</th>
-            <th>本週分數</th>
-            <th>週排名</th>
-          </tr>
-        </thead>
-        <tbody id="personalBody"></tbody>
-      </table>
-    </section>
-    <section id="team">
-      <h2>2. 團隊排名</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>團隊名稱</th>
-            <th>團隊週平均分</th>
-            <th>週團隊排名</th>
-          </tr>
-        </thead>
-        <tbody id="teamBody"></tbody>
-      </table>
-    </section>
-    <section id="region">
-      <h2>3. 地區排名</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>地區名稱</th>
-            <th>週平均分數</th>
-            <th>週地區排名</th>
-          </tr>
-        </thead>
-        <tbody id="regionBody"></tbody>
-      </table>
-    </section>
+
+  <header>
+    <button id="btnWeekly" class="active">週榜 Weekly</button>
+    <button id="btnMonthly">月榜 Monthly</button>
+  </header>
+
+  <!-- 週榜 -->
+  <div id="weeklyView">
+    <h1>Gamasys Fit Challenge 2025</h1>
+    <h2>週排名 | Weekly Rank</h2>
+    <p id="week-range"></p>
+    <div class="container">
+      <section>
+        <h2>1. 個人分數</h2>
+        <table>
+          <thead>
+            <tr><th>暱稱</th><th>本週分數</th><th>週排名</th></tr>
+          </thead>
+          <tbody id="personalBody"></tbody>
+        </table>
+      </section>
+      <section>
+        <h2>2. 團隊排名</h2>
+        <table>
+          <thead>
+            <tr><th>團隊名稱</th><th>團隊週平均分</th><th>週團隊排名</th></tr>
+          </thead>
+          <tbody id="teamBody"></tbody>
+        </table>
+      </section>
+      <section>
+        <h2>3. 地區排名</h2>
+        <table>
+          <thead>
+            <tr><th>地區名稱</th><th>週平均分數</th><th>週地區排名</th></tr>
+          </thead>
+          <tbody id="regionBody"></tbody>
+        </table>
+      </section>
+    </div>
   </div>
+
+  <!-- 月榜 -->
+  <div id="monthlyView" style="display:none;">
+    <h1>Gamasys Fit Challenge 2025</h1>
+    <h2>月榜 Monthly (1st)</h2>
+    <div class="container">
+      <section>
+        <h2>個人月排名</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>別名</th>
+              <th>個人積分</th>
+              <th>個人月排名</th>
+            </tr>
+          </thead>
+          <tbody id="monthlyPersonal"></tbody>
+        </table>
+      </section>
+      <section>
+        <h2>團隊月排名</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>隊名</th>
+              <th>團隊積分</th>
+              <th>團隊月排名</th>
+            </tr>
+          </thead>
+          <tbody id="monthlyTeam"></tbody>
+        </table>
+      </section>
+      <section>
+        <h2>地區月排名</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>地區</th>
+              <th>地區月積分</th>
+              <th>地區月排名</th>
+            </tr>
+          </thead>
+          <tbody id="monthlyRegion"></tbody>
+        </table>
+      </section>
+    </div>
+  </div>
+
   <script>
-    const SHEET_ID         = '1MQNLnE7_HfVZKM3HSN03TFDV0BX-4IaNNnbYMhZ5_qQ';
-    const SHEET_NAME       = 'Main';
-    const POLL_INTERVAL_MS = 10000;
+    const SHEET_ID    = '1MQNLnE7_HfVZKM3HSN03TFDV0BX-4IaNNnbYMhZ5_qQ';
+    const WEEK_SHEET  = 'Main';
+    const MONTH_SHEET = '1stMonth';  // or '2ndMonth','3rdMonth'
+    const POLL_MS     = 10000;
+
+    const btnW = document.getElementById('btnWeekly');
+    const btnM = document.getElementById('btnMonthly');
+    const wv   = document.getElementById('weeklyView');
+    const mv   = document.getElementById('monthlyView');
+
+    // 切換
+    btnW.onclick = () => {
+      wv.style.display = ''; mv.style.display = 'none';
+      btnW.classList.add('active'); btnM.classList.remove('active');
+      updateWeekly();
+    };
+    btnM.onclick = () => {
+      wv.style.display = 'none'; mv.style.display = '';
+      btnM.classList.add('active'); btnW.classList.remove('active');
+      updateMonthly();
+    };
 
     // 顯示本週範圍
-    (function showWeekRange() {
-      const now = new Date();
-      const day = now.getDay(); // 週日=0, 週一=1...
-      const diffToMon = (day + 6) % 7;
-      const mon = new Date(now);
-      mon.setDate(now.getDate() - diffToMon);
-      const sun = new Date(mon);
-      sun.setDate(mon.getDate() + 6);
-      function fmt(d) {
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const dt = String(d.getDate()).padStart(2, '0');
-        return `${y}/${m}/${dt}`;
-      }
+    (function(){
+      const now = new Date(), d = now.getDay(), diff = (d+6)%7;
+      const mon = new Date(now); mon.setDate(now.getDate()-diff);
+      const sun = new Date(mon); sun.setDate(mon.getDate()+6);
+      const fmt = x => `${x.getFullYear()}/${String(x.getMonth()+1).padStart(2,'0')}/${String(x.getDate()).padStart(2,'0')}`;
       document.getElementById('week-range').textContent = `${fmt(mon)} ~ ${fmt(sun)}`;
     })();
 
-    async function fetchTable() {
-      const url =
-        `https://docs.google.com/spreadsheets/d/${SHEET_ID}` +
-        `/gviz/tq?sheet=${encodeURIComponent(SHEET_NAME)}` +
-        `&tqx=out:json`;
+    // 拉表共用
+    async function fetchSheet(name){
+      const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}`
+                + `/gviz/tq?sheet=${encodeURIComponent(name)}&tqx=out:json`;
       const res = await fetch(url);
       const txt = await res.text();
-      const json = txt.substring(txt.indexOf('(') + 1, txt.lastIndexOf(')'));
+      const json= txt.slice(txt.indexOf('(')+1, txt.lastIndexOf(')'));
       return JSON.parse(json).table;
     }
-
-    function findIndex(cols, pattern) {
-      return cols.findIndex(h => new RegExp(pattern, 'i').test(h));
+    function findIndex(cols, pat){
+      return cols.findIndex(h => new RegExp(pat,'i').test(h));
     }
 
-    function getPositions(tbody) {
-      const positions = {};
-      Array.from(tbody.children).forEach(row => {
-        positions[row.children[0].textContent] = row.getBoundingClientRect().top;
-      });
-      return positions;
-    }
+    // 更新週榜（沿用你原本邏輯）
+    async function updateWeekly(){
+      const tbl  = await fetchSheet(WEEK_SHEET);
+      const cols = tbl.cols.map(c=>c.label), rows = tbl.rows;
+      const iName  = findIndex(cols, '名稱');
+      const iScore = findIndex(cols, '本週個人分數');
+      const iRank  = findIndex(cols, '週排名');
+      const iTeam  = findIndex(cols, '團隊名稱');
+      const iTavg  = findIndex(cols, '團隊週平均分');
+      const iTrank = findIndex(cols, '週團隊排名');
+      const iLoc   = findIndex(cols, '所在地|Location');
+      const iRr    = findIndex(cols, '週地區排名');
 
-    async function updateSection(tbody, buildRows) {
-      const oldPos = getPositions(tbody);
-      tbody.innerHTML = '';
-      buildRows();
-      Array.from(tbody.children).forEach(row => {
-        const key = row.children[0].textContent;
-        const newTop = row.getBoundingClientRect().top;
-        const delta = oldPos[key] - newTop || 0;
-        row.style.transform = `translateY(${delta}px)`;
-        requestAnimationFrame(() => (row.style.transform = ''));
-      });
-    }
 
-    async function update() {
-      const table = await fetchTable();
-      const cols  = table.cols.map(c => c.label);
-      const rows  = table.rows;
-
-      const iName       = findIndex(cols, '名稱');
-      const iScore      = findIndex(cols, '本週個人分數');
-      const iRank       = findIndex(cols, '週排名');
-      const iWeight     = findIndex(cols, '本週體重|Weekly Weight');
-      const iBodyFat    = findIndex(cols, '本週體脂肪|Weekly Body Fat');
-      const iTeamName   = findIndex(cols, '團隊名稱');
-      const iTeamAvg    = findIndex(cols, '團隊週平均分');
-      const iTeamRank   = findIndex(cols, '週團隊排名');
-      const iRegionName = findIndex(cols, '所在地|地區');
-      const iRegionRank = findIndex(cols, '週地區排名');
-
-      const pBody = document.getElementById('personalBody');
-      const tBody = document.getElementById('teamBody');
-      const rBody = document.getElementById('regionBody');
-
-      // 個人分數 (過濾無本週體重/體脂/分數為0者)
-      await updateSection(pBody, () => {
-        rows.filter(r => {
-          const hasName   = r.c[iName]?.v;
-          const hasWeight = r.c[iWeight]?.v;
-          const hasFat    = r.c[iBodyFat]?.v;
-          const score     = parseFloat(r.c[iScore]?.v) || 0;
-          return hasName && hasWeight && hasFat && score > 0;
-        })
-        .sort((a, b) => (a.c[iRank]?.v || Infinity) - (b.c[iRank]?.v || Infinity))
-        .forEach(r => {
+      function fill(id, data){
+        const tb = document.getElementById(id);
+        tb.innerHTML = '';
+        data.forEach(r=>{
           const tr = document.createElement('tr');
-          [iName, iScore, iRank].forEach(i => {
+          r.forEach(v=>{
             const td = document.createElement('td');
-            td.textContent = r.c[i]?.v;
+            td.textContent = v;
             tr.appendChild(td);
           });
-          pBody.appendChild(tr);
+          tb.appendChild(tr);
         });
-      });
+      }
 
-      // 團隊排名 (使用表格上的團隊週平均分)
-      await updateSection(tBody, () => {
-        const seen = {};
-        const teams = [];
-        rows.forEach(r => {
-          const name = r.c[iTeamName]?.v;
-          const avg  = r.c[iTeamAvg]?.v;
-          const rk   = parseFloat(r.c[iTeamRank]?.v) || Infinity;
-          if (!name || !avg || seen[name]) return;
-          seen[name] = true;
-          teams.push({ name, avg, rank: rk });
+      // 個人
+      fill('personalBody',
+        rows.filter(r=>r.c[iName]?.v && +r.c[iScore]?.v>0)
+            .sort((a,b)=>a.c[iRank].v - b.c[iRank].v)
+            .map(r=>[r.c[iName].v, r.c[iScore].v, r.c[iRank].v])
+      );
+      // 團隊
+      fill('teamBody',(()=>{
+        const seen={}, arr=[];
+        rows.forEach(r=>{
+          const n = r.c[iTeam]?.v;
+          if(!n||seen[n]) return;
+          seen[n]=1;
+          arr.push({n,avg:r.c[iTavg].v,rank:+r.c[iTrank].v});
         });
-        teams.sort((a, b) => a.rank - b.rank)
-             .forEach(({ name, avg, rank }) => {
-          const tr = document.createElement('tr');
-          [name, avg, rank].forEach(val => {
-            const td = document.createElement('td');
-            td.textContent = val;
-            tr.appendChild(td);
-          });
-          tBody.appendChild(tr);
+        return arr.sort((a,b)=>a.rank-b.rank)
+                  .map(o=>[o.n,o.avg,o.rank]);
+      })());
+      // 地區
+      fill('regionBody',(()=>{
+        const s={};
+        rows.forEach(r=>{
+          const sc = +r.c[iScore]?.v;
+          const rg = r.c[iLoc]?.v;
+          const rk = +r.c[iRr]?.v;
+          if(!rg||sc<=0) return;
+          s[rg]=s[rg]||{sum:0,c:0,rank:rk};
+          s[rg].sum+=sc; s[rg].c++;
         });
-      });
+        return Object.entries(s)
+          .map(([k,v])=>[k, (v.sum/v.c).toFixed(3), v.rank])
+          .sort((a,b)=>a[2]-b[2]);
+      })());
 
-      // 地區排名 (過濾分數為0者)
-      const regStats = {};
-      rows.forEach(r => {
-        const s  = parseFloat(r.c[iScore]?.v) || 0;
-        if (s <= 0) return;
-        const rg = r.c[iRegionName]?.v;
-        const rk = r.c[iRegionRank]?.v;
-        if (!rg) return;
-        if (!regStats[rg]) regStats[rg] = { sum: 0, cnt: 0, rank: rk };
-        regStats[rg].sum += s;
-        regStats[rg].cnt++;
-      });
-      await updateSection(rBody, () => {
-        Object.entries(regStats)
-          .map(([region, { sum, cnt, rank }]) => ({ region, avg: cnt ? Math.round((sum/cnt)*1000)/1000 : '', rank: parseFloat(rank) || Infinity }))
-          .sort((a, b) => a.rank - b.rank)
-          .forEach(({ region, avg, rank }) => {
-            const tr = document.createElement('tr');
-            [region, avg, rank].forEach(val => {
-              const td = document.createElement('td');
-              td.textContent = val;
-              tr.appendChild(td);
-            });
-            rBody.appendChild(tr);
-          });
-      });
+      clearInterval(window._w);
+      window._w = setInterval(updateWeekly, POLL_INTERVAL_MS);
     }
 
-    update();
-    setInterval(update, POLL_INTERVAL_MS);
+    // 更新月榜（拆三區塊，只要全欄都有值才顯示）
+    async function updateMonthly(){
+      const tbl  = await fetchSheet(MONTH_SHEET);
+      const cols = tbl.cols.map(c=>c.label), rows = tbl.rows;
+      const iName = findIndex(cols,'別名'),
+            iPsc  = findIndex(cols,'個人積分'),
+            iPrk  = findIndex(cols,'個人月排名'),
+            iTn   = findIndex(cols,'團體名'),
+            iTs   = findIndex(cols,'團隊積分'),
+            iTr   = findIndex(cols,'團隊月排名'),
+            iLoc  = findIndex(cols,'區域'),
+            iLs   = findIndex(cols,'地區月積分'),
+            iLr   = findIndex(cols,'地區月排名');
+
+      // 個人月榜
+      const per = rows
+        .map(r=>[r.c[iName]?.v, r.c[iPsc]?.v, r.c[iPrk]?.v])
+        .filter(r=>r.every(v=>v!=null && v!==''))
+        .sort((a,b)=>a[2]-b[2]);
+
+      // 團隊月榜（去重，只要全值）
+      const tm = {};
+      rows.forEach(r=>{
+        const n = r.c[iTn]?.v,
+              pts = r.c[iTs]?.v,
+              rk  = r.c[iTr]?.v;
+        if(!n||!pts||!rk) return;
+        if(!tm[n] || rk < tm[n].rk) tm[n] = {pts,rk};
+      });
+      const team = Object.entries(tm)
+        .map(([n,o])=>[n, o.pts, o.rk])
+        .sort((a,b)=>a[2]-b[2]);
+
+      // 地區月榜（去重）
+      const lm = {};
+      rows.forEach(r=>{
+        const l = r.c[iLoc]?.v,
+              pts = r.c[iLs]?.v,
+              rk  = r.c[iLr]?.v;
+        if(!l||!pts||!rk) return;
+        if(!lm[l] || rk < lm[l].rk) lm[l] = {pts,rk};
+      });
+      const region = Object.entries(lm)
+        .map(([l,o])=>[l, o.pts, o.rk])
+        .sort((a,b)=>a[2]-b[2]);
+
+      // 如果三區都空，隱藏月榜按鈕
+      if(!per.length && !team.length && !region.length){
+        btnM.style.display='none';
+        if(btnM.classList.contains('active')) btnW.click();
+        return;
+      }
+      btnM.style.display='';
+
+      function fill(id, data){
+        const tb = document.getElementById(id);
+        tb.innerHTML = '';
+        data.forEach(r=>{
+          const tr = document.createElement('tr');
+          r.forEach(v=>{
+            const td = document.createElement('td');
+            td.textContent = v;
+            tr.appendChild(td);
+          });
+          tb.appendChild(tr);
+        });
+      }
+      fill('monthlyPersonal', per);
+      fill('monthlyTeam',    team);
+      fill('monthlyRegion',  region);
+    }
+
+    // 初始
+    updateWeekly();
+    updateMonthly();
   </script>
 </body>
 </html>
