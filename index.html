@@ -18,7 +18,6 @@
       background: var(--navy);
       color: var(--text);
       font-family: Arial, sans-serif;
-      padding: 20px;
       margin: 0;
     }
     header {
@@ -83,6 +82,12 @@
     tr:nth-child(even) {
       background: var(--navy);
     }
+    .weekView {
+      padding: 20px
+    }
+    .monthView{
+      padding: 20px
+    }
     @media (max-width: 600px) {
       .container { flex-direction: column; }
       section { flex: 1 1 100%; }
@@ -97,7 +102,7 @@
   </header>
 
   <!-- 週榜 -->
-  <div id="weeklyView">
+  <div id="weeklyView" class="weekView">
     <h1>Gamasys Fit Challenge 2025</h1>
     <h2>週排名 | Weekly Rank</h2>
     <p id="week-range"></p>
@@ -133,7 +138,7 @@
   </div>
 
   <!-- 月榜 -->
-  <div id="monthlyView" style="display:none;">
+  <div id="monthlyView" class="monthView" style="display:none;">
     <h1>Gamasys Fit Challenge 2025</h1>
     <h2>月榜 Monthly (1st)</h2>
     <div class="container">
@@ -211,6 +216,12 @@
       document.getElementById('week-range').textContent = `${fmt(mon)} ~ ${fmt(sun)}`;
     })();
 
+    function fmtNum(v) {
+      const n = Number(v);
+      if (isNaN(n)) return '';
+      return n.toFixed(3).replace(/\.?0+$/,'');
+    }
+
     // 拉表共用
     async function fetchSheet(name){
       const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}`
@@ -225,70 +236,75 @@
     }
 
     // 更新週榜（沿用你原本邏輯）
-    async function updateWeekly(){
-      const tbl  = await fetchSheet(WEEK_SHEET);
-      const cols = tbl.cols.map(c=>c.label), rows = tbl.rows;
-      const iName  = findIndex(cols, '名稱');
-      const iScore = findIndex(cols, '本週個人分數');
-      const iRank  = findIndex(cols, '週排名');
-      const iTeam  = findIndex(cols, '團隊名稱');
-      const iTavg  = findIndex(cols, '團隊週平均分');
-      const iTrank = findIndex(cols, '週團隊排名');
-      const iLoc   = findIndex(cols, '所在地|Location');
-      const iRr    = findIndex(cols, '週地區排名');
+   async function updateWeekly(){
+    const tbl  = await fetchSheet(WEEK_SHEET);
+    const cols = tbl.cols.map(c=>c.label), rows = tbl.rows;
+    const iName  = findIndex(cols, '名稱');
+    const iScore = findIndex(cols, '本週個人分數');
+    const iRank  = findIndex(cols, '週排名');
+    const iTeam  = findIndex(cols, '團隊名稱');
+    const iTavg  = findIndex(cols, '團隊週平均分');
+    const iTrank = findIndex(cols, '週團隊排名');
+    const iLoc   = findIndex(cols, '所在地|Location');
+    const iRr    = findIndex(cols, '週地區排名');
 
-
-      function fill(id, data){
-        const tb = document.getElementById(id);
-        tb.innerHTML = '';
-        data.forEach(r=>{
-          const tr = document.createElement('tr');
-          r.forEach(v=>{
-            const td = document.createElement('td');
-            td.textContent = v;
-            tr.appendChild(td);
-          });
-          tb.appendChild(tr);
+    function fill(id, data){
+      const tb = document.getElementById(id);
+      tb.innerHTML = '';
+      data.forEach(r=>{
+        const tr = document.createElement('tr');
+        r.forEach(v=>{
+          const td = document.createElement('td');
+          td.textContent = v;
+          tr.appendChild(td);
         });
-      }
-
-      // 個人
-      fill('personalBody',
-        rows.filter(r=>r.c[iName]?.v && +r.c[iScore]?.v>0)
-            .sort((a,b)=>a.c[iRank].v - b.c[iRank].v)
-            .map(r=>[r.c[iName].v, r.c[iScore].v, r.c[iRank].v])
-      );
-      // 團隊
-      fill('teamBody',(()=>{
-        const seen={}, arr=[];
-        rows.forEach(r=>{
-          const n = r.c[iTeam]?.v;
-          if(!n||seen[n]) return;
-          seen[n]=1;
-          arr.push({n,avg:r.c[iTavg].v,rank:+r.c[iTrank].v});
-        });
-        return arr.sort((a,b)=>a.rank-b.rank)
-                  .map(o=>[o.n,o.avg,o.rank]);
-      })());
-      // 地區
-      fill('regionBody',(()=>{
-        const s={};
-        rows.forEach(r=>{
-          const sc = +r.c[iScore]?.v;
-          const rg = r.c[iLoc]?.v;
-          const rk = +r.c[iRr]?.v;
-          if(!rg||sc<=0) return;
-          s[rg]=s[rg]||{sum:0,c:0,rank:rk};
-          s[rg].sum+=sc; s[rg].c++;
-        });
-        return Object.entries(s)
-          .map(([k,v])=>[k, (v.sum/v.c).toFixed(3), v.rank])
-          .sort((a,b)=>a[2]-b[2]);
-      })());
-
-      clearInterval(window._w);
-      window._w = setInterval(updateWeekly, POLL_INTERVAL_MS);
+        tb.appendChild(tr);
+      });
     }
+
+    // 個人
+    fill('personalBody',
+      rows.filter(r=>r.c[iName]?.v && +r.c[iScore]?.v>0)
+          .sort((a,b)=>a.c[iRank].v - b.c[iRank].v)
+          .map(r=>[r.c[iName].v, r.c[iScore].v, r.c[iRank].v])
+    );
+
+    // 團隊（過濾掉平均分數為 0 的隊伍）
+    fill('teamBody', (() => {
+      const seen = {}, arr = [];
+      rows.forEach(r=>{
+        const n   = r.c[iTeam]?.v;
+        const avg = parseFloat(r.c[iTavg]?.v) || 0;
+        const rk  = +r.c[iTrank]?.v;
+        if (!n || seen[n] || avg === 0) return;    // 如果沒有隊名、已處理過、或平均分數為 0，就跳過
+        seen[n] = true;
+        arr.push({ n, avg, rank: rk });
+      });
+      return arr
+        .sort((a,b)=>a.rank - b.rank)
+        .map(o=>[o.n, o.avg.toFixed(3), o.rank]);
+    })());
+
+    // 地區
+    fill('regionBody', (() => {
+      const s = {};
+      rows.forEach(r=>{
+        const sc = +r.c[iScore]?.v;
+        const rg = r.c[iLoc]?.v;
+        const rk = +r.c[iRr]?.v;
+        if (!rg || sc <= 0) return;
+        if (!s[rg]) s[rg] = { sum:0, c:0, rank:rk };
+        s[rg].sum += sc;
+        s[rg].c++;
+      });
+      return Object.entries(s)
+        .map(([k,v])=>[k, (v.sum/v.c).toFixed(3), v.rank])
+        .sort((a,b)=>a[2]-b[2]);
+    })());
+
+    clearInterval(window._w);
+  }
+
 
     // 更新月榜（拆三區塊，只要全欄都有值才顯示）
     async function updateMonthly(){
@@ -313,11 +329,15 @@
       // 團隊月榜（去重，只要全值）
       const tm = {};
       rows.forEach(r=>{
-        const n = r.c[iTn]?.v,
-              pts = r.c[iTs]?.v,
-              rk  = r.c[iTr]?.v;
-        if(!n||!pts||!rk) return;
-        if(!tm[n] || rk < tm[n].rk) tm[n] = {pts,rk};
+        const name = r.c[iTn]?.v;
+        const rawPts = r.c[iTs]?.v;
+        const rk   = r.c[iTr]?.v;
+        if (!name || rawPts == null || rk == null) return;
+        const pts = fmtNum(rawPts);
+        if (!pts) return;
+        if (!tm[name] || rk < tm[name].rk) {
+          tm[name] = { pts, rk };
+        }
       });
       const team = Object.entries(tm)
         .map(([n,o])=>[n, o.pts, o.rk])
@@ -326,8 +346,8 @@
       // 地區月榜（去重）
       const lm = {};
       rows.forEach(r=>{
-        const l = r.c[iLoc]?.v,
-              pts = r.c[iLs]?.v,
+        const l = r.c[iLoc]?.v;
+        const pts = fmtNum(r.c[iLs]?.v);
               rk  = r.c[iLr]?.v;
         if(!l||!pts||!rk) return;
         if(!lm[l] || rk < lm[l].rk) lm[l] = {pts,rk};
