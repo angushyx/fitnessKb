@@ -38,7 +38,7 @@
     header button.active {
       border-bottom: 2px solid var(--accent);
     }
-    h1, h2 {
+    h1, h2, h3 {
       text-align: center;
       color: var(--accent);
       margin: 0.5em 0;
@@ -87,6 +87,9 @@
     }
     .monthView{
       padding: 20px
+    }
+    #monthlyContainer{
+      flex-direction: column;
     }
     @media (max-width: 600px) {
       .container { flex-direction: column; }
@@ -140,60 +143,20 @@
   <!-- 月榜 -->
   <div id="monthlyView" class="monthView" style="display:none;">
     <h1>Gamasys Fit Challenge 2025</h1>
-    <h2>月榜 Monthly (1st)</h2>
-    <div class="container">
-      <section>
-        <h2>個人月排名</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>別名</th>
-              <th>個人積分</th>
-              <th>個人月排名</th>
-            </tr>
-          </thead>
-          <tbody id="monthlyPersonal"></tbody>
-        </table>
-      </section>
-      <section>
-        <h2>團隊月排名</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>隊名</th>
-              <th>團隊積分</th>
-              <th>團隊月排名</th>
-            </tr>
-          </thead>
-          <tbody id="monthlyTeam"></tbody>
-        </table>
-      </section>
-      <section>
-        <h2>地區月排名</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>地區</th>
-              <th>地區月積分</th>
-              <th>地區月排名</th>
-            </tr>
-          </thead>
-          <tbody id="monthlyRegion"></tbody>
-        </table>
-      </section>
-    </div>
+    <div id="monthlyContainer" class="container"></div>
   </div>
 
   <script>
     const SHEET_ID    = '1MQNLnE7_HfVZKM3HSN03TFDV0BX-4IaNNnbYMhZ5_qQ';
     const WEEK_SHEET  = 'Main';
-    const MONTH_SHEET = '1stMonth';  // or '2ndMonth','3rdMonth'
+    const MONTH_SHEETS = ['3rdMonth', '2ndMonth', '1stMonth']; // 順序：3rd --> 2nd --> 1st
     const POLL_MS     = 10000;
 
     const btnW = document.getElementById('btnWeekly');
     const btnM = document.getElementById('btnMonthly');
     const wv   = document.getElementById('weeklyView');
     const mv   = document.getElementById('monthlyView');
+    const monthlyContainer = document.getElementById('monthlyContainer');
 
     // 切換
     btnW.onclick = () => {
@@ -305,81 +268,146 @@
     clearInterval(window._w);
   }
 
+    // 更新月榜
+    async function updateMonthly() {
+      monthlyContainer.innerHTML = ''; // 清空月榜內容
 
-    // 更新月榜（拆三區塊，只要全欄都有值才顯示）
-    async function updateMonthly(){
-      const tbl  = await fetchSheet(MONTH_SHEET);
-      const cols = tbl.cols.map(c=>c.label), rows = tbl.rows;
-      const iName = findIndex(cols,'別名'),
-            iPsc  = findIndex(cols,'個人積分'),
-            iPrk  = findIndex(cols,'個人月排名'),
-            iTn   = findIndex(cols,'團體名'),
-            iTs   = findIndex(cols,'團隊積分'),
-            iTr   = findIndex(cols,'團隊月排名'),
-            iLoc  = findIndex(cols,'區域'),
-            iLs   = findIndex(cols,'地區月積分'),
-            iLr   = findIndex(cols,'地區月排名');
 
-      // 個人月榜
-      const per = rows
-        .map(r=>[r.c[iName]?.v, r.c[iPsc]?.v, r.c[iPrk]?.v])
-        .filter(r=>r.every(v=>v!=null && v!==''))
-        .sort((a,b)=>a[2]-b[2]);
+      for (const sheet of MONTH_SHEETS) {
+        const tbl = await fetchSheet(sheet).catch(() => null);
+        if (!tbl) continue; // 如果沒有資料，跳過
 
-      // 團隊月榜（去重，只要全值）
-      const tm = {};
-      rows.forEach(r=>{
-        const name = r.c[iTn]?.v;
-        const rawPts = r.c[iTs]?.v;
-        const rk   = r.c[iTr]?.v;
-        if (!name || rawPts == null || rk == null) return;
-        const pts = fmtNum(rawPts);
-        if (!pts) return;
-        if (!tm[name] || rk < tm[name].rk) {
+        const cols = tbl.cols.map(c => c.label), rows = tbl.rows;
+        const iName = findIndex(cols, '別名'),
+          iPsc  = findIndex(cols, '個人積分'),
+          iPrk  = findIndex(cols, '個人月排名'),
+          iTn   = findIndex(cols, '團體名'),
+          iTs   = findIndex(cols, '團隊積分'),
+          iTr   = findIndex(cols, '團隊月排名'),
+          iLoc  = findIndex(cols, '區域'),
+          iLs   = findIndex(cols, '地區月積分'),
+          iLr   = findIndex(cols, '地區月排名');
+
+        // 個人月榜
+        const per = rows
+          .map(r => [r.c[iName]?.v, r.c[iPsc]?.v, r.c[iPrk]?.v])
+          .filter(r => r.every(v => v != null && v !== ''))
+          .sort((a, b) => a[2] - b[2]);
+
+        // 團隊月榜
+        const tm = {};
+        rows.forEach(r => {
+          const name = r.c[iTn]?.v;
+          const rawPts = r.c[iTs]?.v;
+          const rk = r.c[iTr]?.v;
+          if (!name || rawPts == null || rk == null) return;
+          const pts = fmtNum(rawPts);
+          if (!pts) return;
+          if (!tm[name] || rk < tm[name].rk) {
           tm[name] = { pts, rk };
-        }
-      });
-      const team = Object.entries(tm)
-        .map(([n,o])=>[n, o.pts, o.rk])
-        .sort((a,b)=>a[2]-b[2]);
-
-      // 地區月榜（去重）
-      const lm = {};
-      rows.forEach(r=>{
-        const l = r.c[iLoc]?.v;
-        const pts = fmtNum(r.c[iLs]?.v);
-              rk  = r.c[iLr]?.v;
-        if(!l||!pts||!rk) return;
-        if(!lm[l] || rk < lm[l].rk) lm[l] = {pts,rk};
-      });
-      const region = Object.entries(lm)
-        .map(([l,o])=>[l, o.pts, o.rk])
-        .sort((a,b)=>a[2]-b[2]);
-
-      // 如果三區都空，隱藏月榜按鈕
-      if(!per.length && !team.length && !region.length){
-        btnM.style.display='none';
-        if(btnM.classList.contains('active')) btnW.click();
-        return;
-      }
-      btnM.style.display='';
-
-      function fill(id, data){
-        const tb = document.getElementById(id);
-        tb.innerHTML = '';
-        data.forEach(r=>{
-          const tr = document.createElement('tr');
-          r.forEach(v=>{
-            const td = document.createElement('td');
-            td.textContent = v;
-            tr.appendChild(td);
-          });
-          tb.appendChild(tr);
+          }
         });
+        const team = Object.entries(tm)
+          .map(([n, o]) => [n, o.pts, o.rk])
+          .sort((a, b) => a[2] - b[2]);
+
+        // 地區月榜
+        const lm = {};
+        rows.forEach(r => {
+          const l = r.c[iLoc]?.v;
+          const pts = fmtNum(r.c[iLs]?.v);
+          const rk = r.c[iLr]?.v;
+          if (!l || !pts || !rk) return;
+          if (!lm[l] || rk < lm[l].rk) lm[l] = { pts, rk };
+        });
+        const region = Object.entries(lm)
+          .map(([l, o]) => [l, o.pts, o.rk])
+          .sort((a, b) => a[2] - b[2]);
+
+        // 如果三區都空，跳過該月
+        if (!per.length && !team.length && !region.length) continue;
+
+        // 建立月榜區塊
+        const section = document.createElement('section');
+        section.style.width = '80%';
+        section.style.margin = '0 auto';
+        section.style.marginBottom = '20px';
+        section.style.display = 'flex';
+        section.style.flexDirection = 'column';
+        section.style.flex = '1';
+
+        const header = document.createElement('h2');
+        header.textContent = `${sheet.replace('Month', '')}`;
+        header.style.cursor = 'pointer';
+        header.style.background = 'var(--lightN)';
+        header.style.padding = '10px';
+        header.style.borderRadius = '5px';
+        header.style.textAlign = 'center';
+
+        const content = document.createElement('div');
+        content.style.overflow = 'hidden';
+        content.style.transition = 'max-height 0.3s ease';
+        content.style.maxHeight = '0';
+        content.style.display = 'flex';
+        content.style.flexDirection = 'column';
+        content.style.gap = '20px';
+
+        // 每個月的 flag
+        let isExpanded = false;
+
+        header.onclick = () => {
+          if (!isExpanded) {
+          content.style.maxHeight = content.scrollHeight + 'px';
+          } else {
+          content.style.maxHeight = '0';
+          }
+          isExpanded = !isExpanded;
+        };
+
+        content.innerHTML = `
+          <div style="display: flex; flex-direction: row; gap: 10px;">
+          <div>
+          <h3>1.個人月排名</h3>
+          <table>
+          <thead>
+            <tr><th>別名</th><th>個人積分</th><th>個人月排名</th></tr>
+          </thead>
+          <tbody>${per.map(r => `<tr>${r.map(v => `<td>${v}</td>`).join('')}</tr>`).join('')}</tbody>
+          </table>
+          </div>
+          <div>
+          <h3>2.團隊月排名</h3>
+          <table>
+          <thead>
+            <tr><th>隊名</th><th>團隊積分</th><th>團隊月排名</th></tr>
+          </thead>
+          <tbody>${team.map(r => `<tr>${r.map(v => `<td>${v}</td>`).join('')}</tr>`).join('')}</tbody>
+          </table>
+          </div>
+          <div>
+          <h3>3.地區月排名</h3>
+          <table>
+          <thead>
+            <tr><th>地區</th><th>地區月積分</th><th>地區月排名</th></tr>
+          </thead>
+          <tbody>${region.map(r => `<tr>${r.map(v => `<td>${v}</td>`).join('')}</tr>`).join('')}</tbody>
+          </table>
+          </div>
+          </div>
+        `;
+
+        section.appendChild(header);
+        section.appendChild(content);
+        monthlyContainer.appendChild(section);
       }
-      fill('monthlyPersonal', per);
-      fill('monthlyTeam',    team);
-      fill('monthlyRegion',  region);
+
+      // 如果沒有任何月榜資料，隱藏月榜按鈕
+      if (!monthlyContainer.innerHTML.trim()) {
+      btnM.style.display = 'none';
+      if (btnM.classList.contains('active')) btnW.click();
+      } else {
+      btnM.style.display = '';
+      }
     }
 
     // 初始
