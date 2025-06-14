@@ -272,7 +272,34 @@
     async function updateMonthly() {
       monthlyContainer.innerHTML = ''; // 清空月榜內容
 
-      const renderedSheets = new Set(); // 防止重複渲染
+      // 添加 Skeleton
+      const skeleton = document.createElement('div');
+      skeleton.style.display = 'flex';
+      skeleton.style.flexDirection = 'column';
+      skeleton.style.alignItems = 'center';
+      skeleton.style.gap = '20px';
+      skeleton.innerHTML = `
+      <div class="skeleton" style="width: 80%; height: 200px; background: var(--lightN); border-radius: 5px;"></div>
+      <div class="skeleton" style="width: 80%; height: 200px; background: var(--lightN); border-radius: 5px;"></div>
+      <div class="skeleton" style="width: 80%; height: 200px; background: var(--lightN); border-radius: 5px;"></div>
+      `;
+      monthlyContainer.appendChild(skeleton);
+
+      // 添加 Skeleton 動畫
+      const style = document.createElement('style');
+      style.textContent = `
+      .skeleton {
+        animation: pulse 1.5s infinite;
+      }
+      @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+      }
+      `;
+      document.head.appendChild(style);
+
+      const renderedSheets = new Set(); // 使用 Set 防止重複渲染
       let firstSection = null; // 用於記錄第一個月榜區塊
 
       for (const sheet of MONTH_SHEETS) {
@@ -416,6 +443,9 @@
 
       renderedSheets.add(sheet); // 標記該月已渲染
       }
+
+      // 移除 Skeleton
+      skeleton.remove();
 
       // 如果沒有任何月榜資料，隱藏月榜按鈕
       if (!monthlyContainer.innerHTML.trim()) {
