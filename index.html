@@ -273,6 +273,7 @@
       monthlyContainer.innerHTML = ''; // 清空月榜內容
 
       const renderedSheets = new Set(); // 防止重複渲染
+      let firstSection = null; // 用於記錄第一個月榜區塊
 
       for (const sheet of MONTH_SHEETS) {
       if (renderedSheets.has(sheet)) continue; // 如果已渲染過，跳過
@@ -405,6 +406,13 @@
       section.appendChild(header);
       section.appendChild(content);
       monthlyContainer.appendChild(section);
+
+      // 如果是第一個月榜，預設展開
+      if (!firstSection) {
+        firstSection = content;
+        content.style.maxHeight = content.scrollHeight + 'px';
+        isExpanded = true;
+      }
 
       renderedSheets.add(sheet); // 標記該月已渲染
       }
