@@ -272,7 +272,11 @@
     async function updateMonthly() {
       monthlyContainer.innerHTML = ''; // 清空月榜內容
 
+      const renderedSheets = new Set(); // 防止重複渲染
+
       for (const sheet of MONTH_SHEETS) {
+      if (renderedSheets.has(sheet)) continue; // 如果已渲染過，跳過
+
       const tbl = await fetchSheet(sheet).catch(() => null);
       if (!tbl) continue; // 如果沒有資料，跳過
 
@@ -401,6 +405,8 @@
       section.appendChild(header);
       section.appendChild(content);
       monthlyContainer.appendChild(section);
+
+      renderedSheets.add(sheet); // 標記該月已渲染
       }
 
       // 如果沒有任何月榜資料，隱藏月榜按鈕
