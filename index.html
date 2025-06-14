@@ -272,133 +272,135 @@
     async function updateMonthly() {
       monthlyContainer.innerHTML = ''; // 清空月榜內容
 
-
       for (const sheet of MONTH_SHEETS) {
-        const tbl = await fetchSheet(sheet).catch(() => null);
-        if (!tbl) continue; // 如果沒有資料，跳過
+      const tbl = await fetchSheet(sheet).catch(() => null);
+      if (!tbl) continue; // 如果沒有資料，跳過
 
-        const cols = tbl.cols.map(c => c.label), rows = tbl.rows;
-        const iName = findIndex(cols, '別名'),
-          iPsc  = findIndex(cols, '個人積分'),
-          iPrk  = findIndex(cols, '個人月排名'),
-          iTn   = findIndex(cols, '團體名'),
-          iTs   = findIndex(cols, '團隊積分'),
-          iTr   = findIndex(cols, '團隊月排名'),
-          iLoc  = findIndex(cols, '區域'),
-          iLs   = findIndex(cols, '地區月積分'),
-          iLr   = findIndex(cols, '地區月排名');
+      const cols = tbl.cols.map(c => c.label), rows = tbl.rows;
+      const iName = findIndex(cols, '別名'),
+        iPsc  = findIndex(cols, '個人積分'),
+        iPrk  = findIndex(cols, '個人月排名'),
+        iTn   = findIndex(cols, '團體名'),
+        iTs   = findIndex(cols, '團隊積分'),
+        iTr   = findIndex(cols, '團隊月排名'),
+        iLoc  = findIndex(cols, '區域'),
+        iLs   = findIndex(cols, '地區月積分'),
+        iLr   = findIndex(cols, '地區月排名');
 
-        // 個人月榜
-        const per = rows
-          .map(r => [r.c[iName]?.v, r.c[iPsc]?.v, r.c[iPrk]?.v])
-          .filter(r => r.every(v => v != null && v !== ''))
-          .sort((a, b) => a[2] - b[2]);
+      // 個人月榜
+      const per = rows
+        .map(r => [r.c[iName]?.v, r.c[iPsc]?.v, r.c[iPrk]?.v])
+        .filter(r => r.every(v => v != null && v !== ''))
+        .sort((a, b) => a[2] - b[2]);
 
-        // 團隊月榜
-        const tm = {};
-        rows.forEach(r => {
-          const name = r.c[iTn]?.v;
-          const rawPts = r.c[iTs]?.v;
-          const rk = r.c[iTr]?.v;
-          if (!name || rawPts == null || rk == null) return;
-          const pts = fmtNum(rawPts);
-          if (!pts) return;
-          if (!tm[name] || rk < tm[name].rk) {
-          tm[name] = { pts, rk };
-          }
-        });
-        const team = Object.entries(tm)
-          .map(([n, o]) => [n, o.pts, o.rk])
-          .sort((a, b) => a[2] - b[2]);
+      // 團隊月榜
+      const tm = {};
+      rows.forEach(r => {
+        const name = r.c[iTn]?.v;
+        const rawPts = r.c[iTs]?.v;
+        const rk = r.c[iTr]?.v;
+        if (!name || rawPts == null || rk == null) return;
+        const pts = fmtNum(rawPts);
+        if (!pts) return;
+        if (!tm[name] || rk < tm[name].rk) {
+        tm[name] = { pts, rk };
+        }
+      });
+      const team = Object.entries(tm)
+        .map(([n, o]) => [n, o.pts, o.rk])
+        .sort((a, b) => a[2] - b[2]);
 
-        // 地區月榜
-        const lm = {};
-        rows.forEach(r => {
-          const l = r.c[iLoc]?.v;
-          const pts = fmtNum(r.c[iLs]?.v);
-          const rk = r.c[iLr]?.v;
-          if (!l || !pts || !rk) return;
-          if (!lm[l] || rk < lm[l].rk) lm[l] = { pts, rk };
-        });
-        const region = Object.entries(lm)
-          .map(([l, o]) => [l, o.pts, o.rk])
-          .sort((a, b) => a[2] - b[2]);
+      // 地區月榜
+      const lm = {};
+      rows.forEach(r => {
+        const l = r.c[iLoc]?.v;
+        const pts = fmtNum(r.c[iLs]?.v);
+        const rk = r.c[iLr]?.v;
+        if (!l || !pts || !rk) return;
+        if (!lm[l] || rk < lm[l].rk) lm[l] = { pts, rk };
+      });
+      const region = Object.entries(lm)
+        .map(([l, o]) => [l, o.pts, o.rk])
+        .sort((a, b) => a[2] - b[2]);
 
-        // 如果三區都空，跳過該月
-        if (!per.length && !team.length && !region.length) continue;
+      // 如果三區都空，跳過該月
+      if (!per.length && !team.length && !region.length) continue;
 
-        // 建立月榜區塊
-        const section = document.createElement('section');
-        section.style.width = '80%';
-        section.style.margin = '0 auto';
-        section.style.marginBottom = '20px';
-        section.style.display = 'flex';
-        section.style.flexDirection = 'column';
-        section.style.flex = '1';
+      // 建立月榜區塊
+      const section = document.createElement('section');
+      section.style.width = '80%';
+      section.style.margin = '0 auto 20px';
+      section.style.display = 'flex';
+      section.style.flexDirection = 'column';
+      section.style.flex = '1 1 0%';
 
-        const header = document.createElement('h2');
-        header.textContent = `${sheet.replace('Month', '')}`;
-        header.style.cursor = 'pointer';
-        header.style.background = 'var(--lightN)';
-        header.style.padding = '10px';
-        header.style.borderRadius = '5px';
-        header.style.textAlign = 'center';
+      // RWD 支援
+      section.style.maxWidth = '100%';
+      section.style.boxSizing = 'border-box';
 
-        const content = document.createElement('div');
-        content.style.overflow = 'hidden';
-        content.style.transition = 'max-height 0.3s ease';
+      const header = document.createElement('h2');
+      header.textContent = `${sheet.replace('Month', '')}`;
+      header.style.cursor = 'pointer';
+      header.style.background = 'var(--lightN)';
+      header.style.padding = '10px';
+      header.style.borderRadius = '5px';
+      header.style.textAlign = 'center';
+
+      const content = document.createElement('div');
+      content.style.overflow = 'hidden';
+      content.style.transition = 'max-height 0.3s ease';
+      content.style.maxHeight = '0';
+      content.style.display = 'flex';
+      content.style.flexDirection = 'column';
+      content.style.gap = '20px';
+
+      // 每個月的 flag
+      let isExpanded = false;
+
+      header.onclick = () => {
+        if (!isExpanded) {
+        content.style.maxHeight = content.scrollHeight + 'px';
+        } else {
         content.style.maxHeight = '0';
-        content.style.display = 'flex';
-        content.style.flexDirection = 'column';
-        content.style.gap = '20px';
+        }
+        isExpanded = !isExpanded;
+      };
 
-        // 每個月的 flag
-        let isExpanded = false;
+      content.innerHTML = `
+        <div style="display: flex; flex-direction: row; gap: 10px; flex-wrap: wrap;">
+        <div style="flex: 1 1 300px; min-width: 300px;">
+        <h3>1.個人月排名</h3>
+        <table>
+        <thead>
+        <tr><th>別名</th><th>個人積分</th><th>個人月排名</th></tr>
+        </thead>
+        <tbody>${per.map(r => `<tr>${r.map(v => `<td>${v}</td>`).join('')}</tr>`).join('')}</tbody>
+        </table>
+        </div>
+        <div style="flex: 1 1 300px; min-width: 300px;">
+        <h3>2.團隊月排名</h3>
+        <table>
+        <thead>
+        <tr><th>隊名</th><th>團隊積分</th><th>團隊月排名</th></tr>
+        </thead>
+        <tbody>${team.map(r => `<tr>${r.map(v => `<td>${v}</td>`).join('')}</tr>`).join('')}</tbody>
+        </table>
+        </div>
+        <div style="flex: 1 1 300px; min-width: 300px;">
+        <h3>3.地區月排名</h3>
+        <table>
+        <thead>
+        <tr><th>地區</th><th>地區月積分</th><th>地區月排名</th></tr>
+        </thead>
+        <tbody>${region.map(r => `<tr>${r.map(v => `<td>${v}</td>`).join('')}</tr>`).join('')}</tbody>
+        </table>
+        </div>
+        </div>
+      `;
 
-        header.onclick = () => {
-          if (!isExpanded) {
-          content.style.maxHeight = content.scrollHeight + 'px';
-          } else {
-          content.style.maxHeight = '0';
-          }
-          isExpanded = !isExpanded;
-        };
-
-        content.innerHTML = `
-          <div style="display: flex; flex-direction: row; gap: 10px;">
-          <div>
-          <h3>1.個人月排名</h3>
-          <table>
-          <thead>
-            <tr><th>別名</th><th>個人積分</th><th>個人月排名</th></tr>
-          </thead>
-          <tbody>${per.map(r => `<tr>${r.map(v => `<td>${v}</td>`).join('')}</tr>`).join('')}</tbody>
-          </table>
-          </div>
-          <div>
-          <h3>2.團隊月排名</h3>
-          <table>
-          <thead>
-            <tr><th>隊名</th><th>團隊積分</th><th>團隊月排名</th></tr>
-          </thead>
-          <tbody>${team.map(r => `<tr>${r.map(v => `<td>${v}</td>`).join('')}</tr>`).join('')}</tbody>
-          </table>
-          </div>
-          <div>
-          <h3>3.地區月排名</h3>
-          <table>
-          <thead>
-            <tr><th>地區</th><th>地區月積分</th><th>地區月排名</th></tr>
-          </thead>
-          <tbody>${region.map(r => `<tr>${r.map(v => `<td>${v}</td>`).join('')}</tr>`).join('')}</tbody>
-          </table>
-          </div>
-          </div>
-        `;
-
-        section.appendChild(header);
-        section.appendChild(content);
-        monthlyContainer.appendChild(section);
+      section.appendChild(header);
+      section.appendChild(content);
+      monthlyContainer.appendChild(section);
       }
 
       // 如果沒有任何月榜資料，隱藏月榜按鈕
