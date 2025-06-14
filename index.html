@@ -279,9 +279,9 @@
       skeleton.style.alignItems = 'center';
       skeleton.style.gap = '20px';
       skeleton.innerHTML = `
-      <div class="skeleton" style="width: 80%; height: 200px; background: var(--lightN); border-radius: 5px;"></div>
-      <div class="skeleton" style="width: 80%; height: 200px; background: var(--lightN); border-radius: 5px;"></div>
-      <div class="skeleton" style="width: 80%; height: 200px; background: var(--lightN); border-radius: 5px;"></div>
+      <div class="skeleton" style="width: 100%; height: 200px; background: var(--lightN); border-radius: 5px;"></div>
+      <div class="skeleton" style="width: 100%; height: 200px; background: var(--lightN); border-radius: 5px;"></div>
+      <div class="skeleton" style="width: 100%; height: 200px; background: var(--lightN); border-radius: 5px;"></div>
       `;
       monthlyContainer.appendChild(skeleton);
 
@@ -289,12 +289,12 @@
       const style = document.createElement('style');
       style.textContent = `
       .skeleton {
-        animation: pulse 1.5s infinite;
+      animation: pulse 1.5s infinite;
       }
       @keyframes pulse {
-        0% { opacity: 1; }
-        50% { opacity: 0.5; }
-        100% { opacity: 1; }
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
       }
       `;
       document.head.appendChild(style);
@@ -304,63 +304,64 @@
 
       for (const sheet of MONTH_SHEETS) {
       if (renderedSheets.has(sheet)) continue; // 如果已渲染過，跳過
+      renderedSheets.add(sheet); // 標記該月已渲染
 
       const tbl = await fetchSheet(sheet).catch(() => null);
       if (!tbl) continue; // 如果沒有資料，跳過
 
       const cols = tbl.cols.map(c => c.label), rows = tbl.rows;
       const iName = findIndex(cols, '別名'),
-        iPsc  = findIndex(cols, '個人積分'),
-        iPrk  = findIndex(cols, '個人月排名'),
-        iTn   = findIndex(cols, '團體名'),
-        iTs   = findIndex(cols, '團隊積分'),
-        iTr   = findIndex(cols, '團隊月排名'),
-        iLoc  = findIndex(cols, '區域'),
-        iLs   = findIndex(cols, '地區月積分'),
-        iLr   = findIndex(cols, '地區月排名');
+      iPsc  = findIndex(cols, '個人積分'),
+      iPrk  = findIndex(cols, '個人月排名'),
+      iTn   = findIndex(cols, '團體名'),
+      iTs   = findIndex(cols, '團隊積分'),
+      iTr   = findIndex(cols, '團隊月排名'),
+      iLoc  = findIndex(cols, '區域'),
+      iLs   = findIndex(cols, '地區月積分'),
+      iLr   = findIndex(cols, '地區月排名');
 
       // 個人月榜
       const per = rows
-        .map(r => [r.c[iName]?.v, r.c[iPsc]?.v, r.c[iPrk]?.v])
-        .filter(r => r.every(v => v != null && v !== ''))
-        .sort((a, b) => a[2] - b[2]);
+      .map(r => [r.c[iName]?.v, r.c[iPsc]?.v, r.c[iPrk]?.v])
+      .filter(r => r.every(v => v != null && v !== ''))
+      .sort((a, b) => a[2] - b[2]);
 
       // 團隊月榜
       const tm = {};
       rows.forEach(r => {
-        const name = r.c[iTn]?.v;
-        const rawPts = r.c[iTs]?.v;
-        const rk = r.c[iTr]?.v;
-        if (!name || rawPts == null || rk == null) return;
-        const pts = fmtNum(rawPts);
-        if (!pts) return;
-        if (!tm[name] || rk < tm[name].rk) {
-        tm[name] = { pts, rk };
-        }
+      const name = r.c[iTn]?.v;
+      const rawPts = r.c[iTs]?.v;
+      const rk = r.c[iTr]?.v;
+      if (!name || rawPts == null || rk == null) return;
+      const pts = fmtNum(rawPts);
+      if (!pts) return;
+      if (!tm[name] || rk < tm[name].rk) {
+      tm[name] = { pts, rk };
+      }
       });
       const team = Object.entries(tm)
-        .map(([n, o]) => [n, o.pts, o.rk])
-        .sort((a, b) => a[2] - b[2]);
+      .map(([n, o]) => [n, o.pts, o.rk])
+      .sort((a, b) => a[2] - b[2]);
 
       // 地區月榜
       const lm = {};
       rows.forEach(r => {
-        const l = r.c[iLoc]?.v;
-        const pts = fmtNum(r.c[iLs]?.v);
-        const rk = r.c[iLr]?.v;
-        if (!l || !pts || !rk) return;
-        if (!lm[l] || rk < lm[l].rk) lm[l] = { pts, rk };
+      const l = r.c[iLoc]?.v;
+      const pts = fmtNum(r.c[iLs]?.v);
+      const rk = r.c[iLr]?.v;
+      if (!l || !pts || !rk) return;
+      if (!lm[l] || rk < lm[l].rk) lm[l] = { pts, rk };
       });
       const region = Object.entries(lm)
-        .map(([l, o]) => [l, o.pts, o.rk])
-        .sort((a, b) => a[2] - b[2]);
+      .map(([l, o]) => [l, o.pts, o.rk])
+      .sort((a, b) => a[2] - b[2]);
 
       // 如果三區都空，跳過該月
       if (!per.length && !team.length && !region.length) continue;
 
       // 建立月榜區塊
       const section = document.createElement('section');
-      section.style.width = '80%';
+      section.style.width = '100%'; // 修改為 100% 適配手機版
       section.style.margin = '0 auto 20px';
       section.style.display = 'flex';
       section.style.flexDirection = 'column';
@@ -390,44 +391,44 @@
       let isExpanded = false;
 
       header.onclick = () => {
-        if (!isExpanded) {
-        content.style.maxHeight = content.scrollHeight + 'px';
-        } else {
-        content.style.maxHeight = '0';
-        }
-        isExpanded = !isExpanded;
+      if (!isExpanded) {
+      content.style.maxHeight = content.scrollHeight + 'px';
+      } else {
+      content.style.maxHeight = '0';
+      }
+      isExpanded = !isExpanded;
       };
 
       content.innerHTML = `
-        <div style="display: flex; flex-direction: row; gap: 10px; flex-wrap: wrap;">
-        <div style="flex: 1 1 300px; min-width: 300px;">
-        <h3>1.個人月排名</h3>
-        <table>
-        <thead>
-        <tr><th>別名</th><th>個人積分</th><th>個人月排名</th></tr>
-        </thead>
-        <tbody>${per.map(r => `<tr>${r.map(v => `<td>${v}</td>`).join('')}</tr>`).join('')}</tbody>
-        </table>
-        </div>
-        <div style="flex: 1 1 300px; min-width: 300px;">
-        <h3>2.團隊月排名</h3>
-        <table>
-        <thead>
-        <tr><th>隊名</th><th>團隊積分</th><th>團隊月排名</th></tr>
-        </thead>
-        <tbody>${team.map(r => `<tr>${r.map(v => `<td>${v}</td>`).join('')}</tr>`).join('')}</tbody>
-        </table>
-        </div>
-        <div style="flex: 1 1 300px; min-width: 300px;">
-        <h3>3.地區月排名</h3>
-        <table>
-        <thead>
-        <tr><th>地區</th><th>地區月積分</th><th>地區月排名</th></tr>
-        </thead>
-        <tbody>${region.map(r => `<tr>${r.map(v => `<td>${v}</td>`).join('')}</tr>`).join('')}</tbody>
-        </table>
-        </div>
-        </div>
+      <div style="display: flex; flex-direction: row; gap: 10px; flex-wrap: wrap;">
+      <div style="flex: 1 1 300px; min-width: 300px;">
+      <h3>1.個人月排名</h3>
+      <table>
+      <thead>
+      <tr><th>別名</th><th>個人積分</th><th>個人月排名</th></tr>
+      </thead>
+      <tbody>${per.map(r => `<tr>${r.map(v => `<td>${v}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table>
+      </div>
+      <div style="flex: 1 1 300px; min-width: 300px;">
+      <h3>2.團隊月排名</h3>
+      <table>
+      <thead>
+      <tr><th>隊名</th><th>團隊積分</th><th>團隊月排名</th></tr>
+      </thead>
+      <tbody>${team.map(r => `<tr>${r.map(v => `<td>${v}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table>
+      </div>
+      <div style="flex: 1 1 300px; min-width: 300px;">
+      <h3>3.地區月排名</h3>
+      <table>
+      <thead>
+      <tr><th>地區</th><th>地區月積分</th><th>地區月排名</th></tr>
+      </thead>
+      <tbody>${region.map(r => `<tr>${r.map(v => `<td>${v}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table>
+      </div>
+      </div>
       `;
 
       section.appendChild(header);
@@ -436,11 +437,11 @@
 
       // 如果是第一個月榜，預設展開
       if (!firstSection) {
-        firstSection = content;
-        content.style.maxHeight = content.scrollHeight + 'px';
-        isExpanded = true;
+      firstSection = content;
+      content.style.maxHeight = content.scrollHeight + 'px';
+      isExpanded = true;
       }
-
+      // 已在上方添加到 renderedSheets，這裡不需要重複添加
       renderedSheets.add(sheet); // 標記該月已渲染
       }
 
@@ -454,6 +455,17 @@
       } else {
       btnM.style.display = '';
       }
+
+      // 修改 RWD 支援
+      const mediaStyle = document.createElement('style');
+      mediaStyle.textContent = `
+      @media (max-width: 600px) {
+      section {
+      width: 100%;
+      }
+      }
+      `;
+      document.head.appendChild(mediaStyle);
     }
 
     // 初始
