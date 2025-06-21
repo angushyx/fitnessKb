@@ -188,12 +188,25 @@
     // 拉表共用
     async function fetchSheet(name){
       const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}`
-                + `/gviz/tq?sheet=${encodeURIComponent(name)}&tqx=out:json`;
-      const res = await fetch(url);
-      const txt = await res.text();
-      const json= txt.slice(txt.indexOf('(')+1, txt.lastIndexOf(')'));
-      return JSON.parse(json).table;
+          + `/gviz/tq?sheet=${encodeURIComponent(name)}&tqx=out:json`;
+      let retries = 3; // 設定重試次數
+      while (retries > 0) {
+      try {
+        const res = await fetch(url);
+        const txt = await res.text();
+        const json= txt.slice(txt.indexOf('(')+1, txt.lastIndexOf(')'));
+        const data = JSON.parse(json).table;
+        if (data && data.rows.length > 0) return data; // 確保有資料返回
+        throw new Error('Empty data');
+      } catch (err) {
+        console.warn(`Fetch failed for sheet "${name}", retries left: ${retries - 1}`, err);
+        retries--;
+        if (retries === 0) throw new Error(`Failed to fetch sheet "${name}" after multiple attempts`);
+        await new Promise(resolve => setTimeout(resolve, 2000)); // 等待 2 秒後重試
+      }
+      }
     }
+
     function findIndex(cols, pat){
       return cols.findIndex(h => new RegExp(pat,'i').test(h));
     }
