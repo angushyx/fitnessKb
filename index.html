@@ -99,6 +99,21 @@
 </head>
 <body>
 
+   <!-- <script>
+    // 在2025/08/04 12:00後顯示結算中訊息
+    (function(){
+      const now = new Date();
+      const cutoff = new Date('2025-07-01T12:00:00');
+      if (now >= cutoff) {
+        document.body.innerHTML = 
+          '<div style="display:flex;justify-content:center;align-items:center;height:100vh;background:var(--navy);color:var(--accent);font-size:2em;font-family:Arial,sans-serif;">' +
+          '總成績結算中...週三公布最終名次' +
+          '</div>';
+        return;
+      }
+    })();
+  </script> -->
+
   <header>
     <button id="btnWeekly" class="active">週榜 Weekly</button>
     <button id="btnMonthly">月榜 Monthly</button>
@@ -157,6 +172,17 @@
     const wv   = document.getElementById('weeklyView');
     const mv   = document.getElementById('monthlyView');
     const monthlyContainer = document.getElementById('monthlyContainer');
+
+     // 動態更新標題：若時間過了 2025/07/01 12:00，將周榜標題改為「總排名」
+    (function(){
+      const now = new Date();
+      const cutoff = new Date('2025-07-01T12:00:00');
+      if (now >= cutoff) {
+        const el = document.getElementById('weeklyTitle');
+        if (el) el.textContent = '總排名';
+      }
+    })();
+
 
     // 切換
     btnW.onclick = () => {
