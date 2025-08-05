@@ -55,11 +55,13 @@
       margin-bottom: 2em;
     }
     section {
-      flex: 1 1 300px;
+      flex: 1 1 calc(50% - 10px);
+      max-width: calc(50% - 10px);
       background: var(--lightN);
       padding: 15px;
       border: 1px solid var(--border);
       border-radius: 8px;
+      box-sizing: border-box;
     }
     section h2 {
       margin-top: 0;
@@ -91,21 +93,25 @@
     #monthlyContainer{
       flex-direction: column;
     }
-    @media (max-width: 600px) {
+    @media (max-width: 768px) {
       .container { flex-direction: column; }
-      section { flex: 1 1 100%; }
+      section { 
+        flex: 1 1 100%; 
+        max-width: 100%;
+      }
     }
   </style>
 </head>
 <body>
 
   <header>
-    <button id="btnWeekly" class="active">週榜 Weekly</button>
-    <button id="btnMonthly">月榜 Monthly</button>
+    <!-- <button id="btnWeekly" class="active">週榜 Weekly</button> -->
+    <!-- <button id="btnMonthly">月榜 Monthly</button> -->
+    <button id="btnFinal" class="active">最終結果 Final</button>
   </header>
 
   <!-- 週榜 -->
-  <div id="weeklyView" class="weekView">
+  <!-- <div id="weeklyView" class="weekView">
     <h1>Gamasys Fit Challenge 2025</h1>
     <h2>週排名 | Weekly Rank</h2>
     <p id="week-range"></p>
@@ -138,46 +144,64 @@
         </table>
       </section>
     </div>
-  </div>
+  </div> -->
 
   <!-- 月榜 -->
-  <div id="monthlyView" class="monthView" style="display:none;">
+  <!-- <div id="monthlyView" class="monthView" style="display:none;">
     <h1>Gamasys Fit Challenge 2025</h1>
     <div id="monthlyContainer" class="container"></div>
+  </div> -->
+
+  <!-- 最終結果 -->
+  <div id="finalView" class="monthView">
+    <h1>Gamasys Fit Challenge 2025</h1>
+    <h2>最終結果 | Final Results</h2>
+    <div class="container" id="finalContainer">
+      <!-- 動態產生內容 -->
+    </div>
   </div>
 
   <script>
     const SHEET_ID    = '1MQNLnE7_HfVZKM3HSN03TFDV0BX-4IaNNnbYMhZ5_qQ';
     const WEEK_SHEET  = 'Read';
-    const MONTH_SHEETS = ['3rdMonth', '2ndMonth', '1stMonth']; // 順序：3rd --> 2nd --> 1st
+    const MONTH_SHEETS = ['3rdMonth', '2ndMonth', '1stMonth'];
+    const FINAL_SHEET = 'Final'; // 你可以根據實際表單名稱調整
     const POLL_MS     = 10000;
 
-    const btnW = document.getElementById('btnWeekly');
-    const btnM = document.getElementById('btnMonthly');
-    const wv   = document.getElementById('weeklyView');
-    const mv   = document.getElementById('monthlyView');
-    const monthlyContainer = document.getElementById('monthlyContainer');
+    // const btnW = document.getElementById('btnWeekly');
+    // const btnM = document.getElementById('btnMonthly');
+    const btnF = document.getElementById('btnFinal');
+    // const wv   = document.getElementById('weeklyView');
+    // const mv   = document.getElementById('monthlyView');
+    const fv   = document.getElementById('finalView');
+    // const monthlyContainer = document.getElementById('monthlyContainer');
+    const finalContainer = document.getElementById('finalContainer');
 
     // 切換
-    btnW.onclick = () => {
-      wv.style.display = ''; mv.style.display = 'none';
-      btnW.classList.add('active'); btnM.classList.remove('active');
-      updateWeekly();
-    };
-    btnM.onclick = () => {
-      wv.style.display = 'none'; mv.style.display = '';
-      btnM.classList.add('active'); btnW.classList.remove('active');
-      updateMonthly();
+    // btnW.onclick = () => {
+    //   wv.style.display = ''; mv.style.display = 'none'; fv.style.display = 'none';
+    //   btnW.classList.add('active'); btnM.classList.remove('active'); btnF.classList.remove('active');
+    //   updateWeekly();
+    // };
+    // btnM.onclick = () => {
+    //   wv.style.display = 'none'; mv.style.display = ''; fv.style.display = 'none';
+    //   btnM.classList.add('active'); btnW.classList.remove('active'); btnF.classList.remove('active');
+    //   updateMonthly();
+    // };
+    btnF.onclick = () => {
+      // wv.style.display = 'none'; mv.style.display = 'none'; fv.style.display = '';
+      btnF.classList.add('active');
+      updateFinal();
     };
 
     // 顯示本週範圍
-    (function(){
-      const now = new Date(), d = now.getDay(), diff = (d+6)%7;
-      const mon = new Date(now); mon.setDate(now.getDate()-diff);
-      const sun = new Date(mon); sun.setDate(mon.getDate()+6);
-      const fmt = x => `${x.getFullYear()}/${String(x.getMonth()+1).padStart(2,'0')}/${String(x.getDate()).padStart(2,'0')}`;
-      document.getElementById('week-range').textContent = `${fmt(mon)} ~ ${fmt(sun)}`;
-    })();
+    // (function(){
+    //   const now = new Date(), d = now.getDay(), diff = (d+6)%7;
+    //   const mon = new Date(now); mon.setDate(now.getDate()-diff);
+    //   const sun = new Date(mon); sun.setDate(mon.getDate()+6);
+    //   const fmt = x => `${x.getFullYear()}/${String(x.getMonth()+1).padStart(2,'0')}/${String(x.getDate()).padStart(2,'0')}`;
+    //   document.getElementById('week-range').textContent = `${fmt(mon)} ~ ${fmt(sun)}`;
+    // })();
 
     function fmtNum(v) {
       const n = Number(v);
@@ -189,21 +213,21 @@
     async function fetchSheet(name){
       const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}`
           + `/gviz/tq?sheet=${encodeURIComponent(name)}&tqx=out:json`;
-      let retries = 3; // 設定重試次數
+      let retries = 3;
       while (retries > 0) {
-      try {
-        const res = await fetch(url);
-        const txt = await res.text();
-        const json= txt.slice(txt.indexOf('(')+1, txt.lastIndexOf(')'));
-        const data = JSON.parse(json).table;
-        if (data && data.rows.length > 0) return data; // 確保有資料返回
-        throw new Error('Empty data');
-      } catch (err) {
-        console.warn(`Fetch failed for sheet "${name}", retries left: ${retries - 1}`, err);
-        retries--;
-        if (retries === 0) throw new Error(`Failed to fetch sheet "${name}" after multiple attempts`);
-        await new Promise(resolve => setTimeout(resolve, 2000)); // 等待 2 秒後重試
-      }
+        try {
+          const res = await fetch(url);
+          const txt = await res.text();
+          const json= txt.slice(txt.indexOf('(')+1, txt.lastIndexOf(')'));
+          const data = JSON.parse(json).table;
+          if (data && data.rows.length > 0) return data;
+          throw new Error('Empty data');
+        } catch (err) {
+          console.warn(`Fetch failed for sheet "${name}", retries left: ${retries - 1}`, err);
+          retries--;
+          if (retries === 0) throw new Error(`Failed to fetch sheet "${name}" after multiple attempts`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
       }
     }
 
@@ -211,274 +235,393 @@
       return cols.findIndex(h => new RegExp(pat,'i').test(h));
     }
 
-    // 更新週榜（沿用你原本邏輯）
-   async function updateWeekly(){
-    const tbl  = await fetchSheet(WEEK_SHEET);
-    const cols = tbl.cols.map(c=>c.label), rows = tbl.rows;
-    const iName  = findIndex(cols, '名稱');
-    const iScore = findIndex(cols, '本週個人分數');
-    const iRank  = findIndex(cols, '週排名');
-    const iTeam  = findIndex(cols, '團隊名稱');
-    const iTavg  = findIndex(cols, '團隊週平均分');
-    const iTrank = findIndex(cols, '週團隊排名');
-    const iLoc   = findIndex(cols, '所在地|Location');
-    const iRr    = findIndex(cols, '週地區排名');
+    // 更新週榜
+    // async function updateWeekly(){
+    //   const tbl  = await fetchSheet(WEEK_SHEET);
+    //   const cols = tbl.cols.map(c=>c.label), rows = tbl.rows;
+    //   const iName  = findIndex(cols, '名稱');
+    //   const iScore = findIndex(cols, '本週個人分數');
+    //   const iRank  = findIndex(cols, '週排名');
+    //   const iTeam  = findIndex(cols, '團隊名稱');
+    //   const iTavg  = findIndex(cols, '團隊週平均分');
+    //   const iTrank = findIndex(cols, '週團隊排名');
+    //   const iLoc   = findIndex(cols, '所在地|Location');
+    //   const iRr    = findIndex(cols, '週地區排名');
 
-    function fill(id, data){
-      const tb = document.getElementById(id);
-      tb.innerHTML = '';
-      data.forEach(r=>{
-        const tr = document.createElement('tr');
-        r.forEach(v=>{
-          const td = document.createElement('td');
-          td.textContent = v;
-          tr.appendChild(td);
-        });
-        tb.appendChild(tr);
-      });
-    }
+    //   function fill(id, data){
+    //     const tb = document.getElementById(id);
+    //     tb.innerHTML = '';
+    //     data.forEach(r=>{
+    //       const tr = document.createElement('tr');
+    //       r.forEach(v=>{
+    //         const td = document.createElement('td');
+    //         td.textContent = v;
+    //         tr.appendChild(td);
+    //       });
+    //       tb.appendChild(tr);
+    //     });
+    //   }
 
-    // 個人
-    fill('personalBody',
-      rows.filter(r=>r.c[iName]?.v && +r.c[iScore]?.v>0)
-          .sort((a,b)=>a.c[iRank].v - b.c[iRank].v)
-          .map(r=>[r.c[iName].v, r.c[iScore].v, r.c[iRank].v])
-    );
+    //   // 個人
+    //   fill('personalBody',
+    //     rows.filter(r=>r.c[iName]?.v && +r.c[iScore]?.v>0)
+    //         .sort((a,b)=>a.c[iRank].v - b.c[iRank].v)
+    //         .map(r=>[r.c[iName].v, r.c[iScore].v, r.c[iRank].v])
+    //   );
 
-    // 團隊（過濾掉平均分數為 0 的隊伍）
-    fill('teamBody', (() => {
-      const seen = {}, arr = [];
-      rows.forEach(r=>{
-        const n   = r.c[iTeam]?.v;
-        const avg = parseFloat(r.c[iTavg]?.v) || 0;
-        const rk  = +r.c[iTrank]?.v;
-        if (!n || seen[n] || avg === 0) return;    // 如果沒有隊名、已處理過、或平均分數為 0，就跳過
-        seen[n] = true;
-        arr.push({ n, avg, rank: rk });
-      });
-      return arr
-        .sort((a,b)=>a.rank - b.rank)
-        .map(o=>[o.n, o.avg.toFixed(3), o.rank]);
-    })());
+    //   // 團隊
+    //   fill('teamBody', (() => {
+    //     const seen = {}, arr = [];
+    //     rows.forEach(r=>{
+    //       const n   = r.c[iTeam]?.v;
+    //       const avg = parseFloat(r.c[iTavg]?.v) || 0;
+    //       const rk  = +r.c[iTrank]?.v;
+    //       if (!n || seen[n] || avg === 0) return;
+    //       seen[n] = true;
+    //       arr.push({ n, avg, rank: rk });
+    //     });
+    //     return arr
+    //       .sort((a,b)=>a.rank - b.rank)
+    //       .map(o=>[o.n, o.avg.toFixed(3), o.rank]);
+    //   })());
 
-    // 地區
-    fill('regionBody', (() => {
-      const s = {};
-      rows.forEach(r=>{
-        const sc = +r.c[iScore]?.v;
-        const rg = r.c[iLoc]?.v;
-        const rk = +r.c[iRr]?.v;
-        if (!rg || sc <= 0) return;
-        if (!s[rg]) s[rg] = { sum:0, c:0, rank:rk };
-        s[rg].sum += sc;
-        s[rg].c++;
-      });
-      return Object.entries(s)
-        .map(([k,v])=>[k, (v.sum/v.c).toFixed(3), v.rank])
-        .sort((a,b)=>a[2]-b[2]);
-    })());
+    //   // 地區
+    //   fill('regionBody', (() => {
+    //     const s = {};
+    //     rows.forEach(r=>{
+    //       const sc = +r.c[iScore]?.v;
+    //       const rg = r.c[iLoc]?.v;
+    //       const rk = +r.c[iRr]?.v;
+    //       if (!rg || sc <= 0) return;
+    //       if (!s[rg]) s[rg] = { sum:0, c:0, rank:rk };
+    //       s[rg].sum += sc;
+    //       s[rg].c++;
+    //     });
+    //     return Object.entries(s)
+    //       .map(([k,v])=>[k, (v.sum/v.c).toFixed(3), v.rank])
+    //       .sort((a,b)=>a[2]-b[2]);
+    //   })());
 
-    clearInterval(window._w);
-  }
+    //   clearInterval(window._w);
+    // }
 
     // 更新月榜
-    async function updateMonthly() {
-      monthlyContainer.innerHTML = ''; // 清空月榜內容
+    // async function updateMonthly() {
+    //   monthlyContainer.innerHTML = '';
+    //   const skeleton = document.createElement('div');
+    //   skeleton.style.display = 'flex';
+    //   skeleton.style.flexDirection = 'column';
+    //   skeleton.style.alignItems = 'center';
+    //   skeleton.style.gap = '20px';
+    //   skeleton.innerHTML = `
+    //   <div class="skeleton" style="width: 100%; height: 200px; background: var(--lightN); border-radius: 5px;"></div>
+    //   <div class="skeleton" style="width: 100%; height: 200px; background: var(--lightN); border-radius: 5px;"></div>
+    //   <div class="skeleton" style="width: 100%; height: 200px; background: var(--lightN); border-radius: 5px;"></div>
+    //   `;
+    //   monthlyContainer.appendChild(skeleton);
 
-      // 添加 Skeleton
-      const skeleton = document.createElement('div');
-      skeleton.style.display = 'flex';
-      skeleton.style.flexDirection = 'column';
-      skeleton.style.alignItems = 'center';
-      skeleton.style.gap = '20px';
-      skeleton.innerHTML = `
-      <div class="skeleton" style="width: 100%; height: 200px; background: var(--lightN); border-radius: 5px;"></div>
-      <div class="skeleton" style="width: 100%; height: 200px; background: var(--lightN); border-radius: 5px;"></div>
-      <div class="skeleton" style="width: 100%; height: 200px; background: var(--lightN); border-radius: 5px;"></div>
+    //   const style = document.createElement('style');
+    //   style.textContent = `
+    //   .skeleton {
+    //   animation: pulse 1.5s infinite;
+    //   }
+    //   @keyframes pulse {
+    //   0% { opacity: 1; }
+    //   50% { opacity: 0.5; }
+    //   100% { opacity: 1; }
+    //   }
+    //   `;
+    //   document.head.appendChild(style);
+
+    //   let firstSection = null;
+
+    //   for (const sheet of MONTH_SHEETS) {
+    //     const tbl = await fetchSheet(sheet).catch(() => null);
+    //     if (!tbl) continue;
+    //     const cols = tbl.cols.map(c => c.label), rows = tbl.rows;
+    //     const iName = findIndex(cols, '別名'),
+    //       iPsc  = findIndex(cols, '個人積分'),
+    //       iPrk  = findIndex(cols, '個人月排名'),
+    //       iTn   = findIndex(cols, '團體名'),
+    //       iTs   = findIndex(cols, '團隊積分'),
+    //       iTr   = findIndex(cols, '團隊月排名'),
+    //       iLoc  = findIndex(cols, '區域'),
+    //       iLs   = findIndex(cols, '地區月積分'),
+    //       iLr   = findIndex(cols, '地區月排名');
+    // 
+    //     const per = rows
+    //       .map(r => [r.c[iName]?.v, r.c[iPsc]?.v, r.c[iPrk]?.v])
+    //       .filter(r => r.every(v => v != null && v !== ''))
+    //       .sort((a, b) => a[2] - b[2]);
+    // 
+    //     const tm = {};
+    //     rows.forEach(r => {
+    //       const name = r.c[iTn]?.v;
+    //       const rawPts = r.c[iTs]?.v;
+    //       const rk = r.c[iTr]?.v;
+    //       if (!name || rawPts == null || rk == null) return;
+    //       const pts = fmtNum(rawPts);
+    //       if (!pts) return;
+    //       if (!tm[name] || rk < tm[name].rk) {
+    //         tm[name] = { pts, rk };
+    //       }
+    //     });
+    //     const team = Object.entries(tm)
+    //       .map(([n, o]) => [n, o.pts, o.rk])
+    //       .sort((a, b) => a[2] - b[2]);
+    // 
+    //     const lm = {};
+    //     rows.forEach(r => {
+    //       const l = r.c[iLoc]?.v;
+    //       const pts = fmtNum(r.c[iLs]?.v);
+    //       const rk = r.c[iLr]?.v;
+    //       if (!l || !pts || !rk) return;
+    //       if (!lm[l] || rk < lm[l].rk) lm[l] = { pts, rk };
+    //     });
+    //     const region = Object.entries(lm)
+    //       .map(([l, o]) => [l, o.pts, o.rk])
+    //       .sort((a, b) => a[2] - b[2]);
+    // 
+    //     if (!per.length && !team.length && !region.length) continue;
+    // 
+    //     const section = document.createElement('section');
+    //     section.style.width = '100%';
+    //     section.style.margin = '0 auto 20px';
+    //     section.style.display = 'flex';
+    //     section.style.flexDirection = 'column';
+    //     section.style.flex = '1 1 0%';
+    //     section.style.maxWidth = '100%';
+    //     section.style.boxSizing = 'border-box';
+    // 
+    //     const header = document.createElement('h2');
+    //     header.textContent = `${sheet.replace('Month', '')}`;
+    //     header.style.cursor = 'pointer';
+    //     header.style.background = 'var(--lightN)';
+    //     header.style.padding = '10px';
+    //     header.style.borderRadius = '5px';
+    //     header.style.textAlign = 'center';
+    // 
+    //     const content = document.createElement('div');
+    //     content.style.overflow = 'hidden';
+    //     content.style.transition = 'max-height 0.3s ease';
+    //     content.style.maxHeight = '0';
+    //     content.style.display = 'flex';
+    //     content.style.flexDirection = 'column';
+    //     content.style.gap = '20px';
+    // 
+    //     let isExpanded = false;
+    // 
+    //     header.onclick = () => {
+    //       if (!isExpanded) {
+    //         content.style.maxHeight = content.scrollHeight + 'px';
+    //       } else {
+    //         content.style.maxHeight = '0';
+    //       }
+    //       isExpanded = !isExpanded;
+    //     };
+    // 
+    //     content.innerHTML = `
+    //     <div style="display: flex; flex-direction: row; gap: 10px; flex-wrap: wrap;">
+    //       <div style="flex: 1 1 300px; min-width: 300px;">
+    //       <h3>1.個人月排名</h3>
+    //       <table>
+    //         <thead>
+    //         <tr><th>別名</th><th>個人積分</th><th>個人月排名</th></tr>
+    //         </thead>
+    //         <tbody>${per.map(r => `<tr>${r.map(v => `<td>${v}</td>`).join('')}</tr>`).join('')}</tbody>
+    //       </table>
+    //       </div>
+    //       <div style="flex: 1 1 300px; min-width: 300px;">
+    //       <h3>2.團隊月排名</h3>
+    //       <table>
+    //         <thead>
+    //         <tr><th>隊名</th><th>團隊積分</th><th>團隊月排名</th></tr>
+    //         </thead>
+    //         <tbody>${team.map(r => `<tr>${r.map(v => `<td>${v}</td>`).join('')}</tr>`).join('')}</tbody>
+    //       </table>
+    //       </div>
+    //       <div style="flex: 1 1 300px; min-width: 300px;">
+    //       <h3>3.地區月排名</h3>
+    //       <table>
+    //         <thead>
+    //         <tr><th>地區</th><th>地區月積分</th><th>地區月排名</th></tr>
+    //         </thead>
+    //         <tbody>${region.map(r => `<tr>${r.map(v => `<td>${v}</td>`).join('')}</tr>`).join('')}</tbody>
+    //       </table>
+    //       </div>
+    //     </div>
+    //     `;
+    // 
+    //     section.appendChild(header);
+    //     section.appendChild(content);
+    //     monthlyContainer.appendChild(section);
+    // 
+    //     if (!firstSection) {
+    //       firstSection = content;
+    //       content.style.maxHeight = content.scrollHeight + 'px';
+    //       isExpanded = true;
+    //     }
+    //   }
+    // 
+    //   skeleton.remove();
+    // 
+    //   if (!monthlyContainer.innerHTML.trim()) {
+    //     btnM.style.display = 'none';
+    //     if (btnM.classList.contains('active')) btnW.click();
+    //   } else {
+    //     btnM.style.display = '';
+    //   }
+    // 
+    //   const mediaStyle = document.createElement('style');
+    //   mediaStyle.textContent = `
+    //   @media (max-width: 600px) {
+    //   section {
+    //     width: 100%;
+    //   }
+    //   }
+    //   `;
+    //   document.head.appendChild(mediaStyle);
+    // }
+
+    // 最終結果頁面
+    async function updateFinal() {
+      finalContainer.innerHTML = `
+        <section>
+          <h2>🏆 個人組現金獎勵（男生組）</h2>
+          <table>
+            <thead>
+              <tr><th>名次</th><th>名稱/暱稱</th><th>分數</th><th>獎勵</th></tr>
+            </thead>
+            <tbody id="finalMale"></tbody>
+          </table>
+        </section>
+        <section>
+          <h2>🏆 個人組現金獎勵（女生組）</h2>
+          <table>
+            <thead>
+              <tr><th>名次</th><th>名稱/暱稱</th><th>分數</th><th>獎勵</th></tr>
+            </thead>
+            <tbody id="finalFemale"></tbody>
+          </table>
+        </section>
+        <section>
+          <h2>🎫 個人分數禮券獎勵</h2>
+          <table>
+            <thead>
+              <tr><th>名稱/暱稱</th><th>分數</th><th>獎勵</th></tr>
+            </thead>
+            <tbody id="finalVoucher"></tbody>
+          </table>
+        </section>
+        <section>
+          <h2>👥 團體組前三名（各贈零食一箱）</h2>
+          <table>
+            <thead>
+              <tr><th>名次</th><th>團隊名稱</th><th>平均分數</th></tr>
+            </thead>
+            <tbody id="finalTeam"></tbody>
+          </table>
+        </section>
+        <section>
+          <h2>😅 倒數前三名（個人）</h2>
+          <table>
+            <thead>
+              <tr><th>名次</th><th>名稱/暱稱</th><th>分數</th></tr>
+            </thead>
+            <tbody id="finalLast"></tbody>
+          </table>
+        </section>
       `;
-      monthlyContainer.appendChild(skeleton);
 
-      // 添加 Skeleton 動畫
-      const style = document.createElement('style');
-      style.textContent = `
-      .skeleton {
-      animation: pulse 1.5s infinite;
-      }
-      @keyframes pulse {
-      0% { opacity: 1; }
-      50% { opacity: 0.5; }
-      100% { opacity: 1; }
-      }
-      `;
-      document.head.appendChild(style);
-
-      let firstSection = null; // 用於記錄第一個月榜區塊
-
-      for (const sheet of MONTH_SHEETS) {
-      // 只渲染每個 sheet 一次
-      const tbl = await fetchSheet(sheet).catch(() => null);
-      if (!tbl) continue; // 如果沒有資料，跳過
-
-      const cols = tbl.cols.map(c => c.label), rows = tbl.rows;
-      const iName = findIndex(cols, '別名'),
-        iPsc  = findIndex(cols, '個人積分'),
-        iPrk  = findIndex(cols, '個人月排名'),
-        iTn   = findIndex(cols, '團體名'),
-        iTs   = findIndex(cols, '團隊積分'),
-        iTr   = findIndex(cols, '團隊月排名'),
-        iLoc  = findIndex(cols, '區域'),
-        iLs   = findIndex(cols, '地區月積分'),
-        iLr   = findIndex(cols, '地區月排名');
-
-      // 個人月榜
-      const per = rows
-        .map(r => [r.c[iName]?.v, r.c[iPsc]?.v, r.c[iPrk]?.v])
-        .filter(r => r.every(v => v != null && v !== ''))
-        .sort((a, b) => a[2] - b[2]);
-
-      // 團隊月榜
-      const tm = {};
+      // 這裡直接用 WEEK_SHEET 的資料（如有專屬 Final sheet 可改）
+      const tbl = await fetchSheet(WEEK_SHEET);
+      const cols = tbl.cols.map(c=>c.label), rows = tbl.rows;
+      const iName = findIndex(cols, '名稱 或 暱稱|Name or Nickname');
+      const iGender = findIndex(cols, '性別|Gender');
+      const iScore = findIndex(cols, '本週個人分數');
+      const iTeam = findIndex(cols, '團隊名稱|Team Name');
+      const iTavg = findIndex(cols, '團隊週平均分');
+      // 個人現金獎勵
+      const male = [], female = [];
       rows.forEach(r => {
-        const name = r.c[iTn]?.v;
-        const rawPts = r.c[iTs]?.v;
-        const rk = r.c[iTr]?.v;
-        if (!name || rawPts == null || rk == null) return;
-        const pts = fmtNum(rawPts);
-        if (!pts) return;
-        if (!tm[name] || rk < tm[name].rk) {
-        tm[name] = { pts, rk };
-        }
+        const name = r.c[iName]?.v;
+        const gender = r.c[iGender]?.v;
+        const score = Number(r.c[iScore]?.v);
+        if (!name || !gender || isNaN(score)) return;
+        if (/男|male/i.test(gender)) male.push({ name, score });
+        if (/女|female/i.test(gender)) female.push({ name, score });
       });
-      const team = Object.entries(tm)
-        .map(([n, o]) => [n, o.pts, o.rk])
-        .sort((a, b) => a[2] - b[2]);
+      male.sort((a,b)=>b.score-a.score);
+      female.sort((a,b)=>b.score-a.score);
 
-      // 地區月榜
-      const lm = {};
+      const cashArr = [
+        {prize:'2,000元', idx:0},
+        {prize:'1,500元', idx:1},
+        {prize:'1,000元', idx:2}
+      ];
+      function renderCash(arr, id) {
+        const tb = document.getElementById(id);
+        tb.innerHTML = cashArr.map((c,i) => {
+          const p = arr[i];
+          if (!p) return '';
+          return `<tr><td>${i+1}</td><td>${p.name}</td><td>${p.score}</td><td>${c.prize}</td></tr>`;
+        }).join('');
+      }
+      renderCash(male, 'finalMale');
+      renderCash(female, 'finalFemale');
+
+      // 個人分數禮券
+      const voucher = [];
       rows.forEach(r => {
-        const l = r.c[iLoc]?.v;
-        const pts = fmtNum(r.c[iLs]?.v);
-        const rk = r.c[iLr]?.v;
-        if (!l || !pts || !rk) return;
-        if (!lm[l] || rk < lm[l].rk) lm[l] = { pts, rk };
+        const name = r.c[iName]?.v;
+        const score = Number(r.c[iScore]?.v);
+        if (!name || isNaN(score)) return;
+        let prize = '';
+        if (score >= 80) prize = '500元';
+        else if (score >= 71) prize = '300元';
+        else if (score >= 65) prize = '200元';
+        if (prize) voucher.push({ name, score, prize });
       });
-      const region = Object.entries(lm)
-        .map(([l, o]) => [l, o.pts, o.rk])
-        .sort((a, b) => a[2] - b[2]);
+      // 排除前三名現金獎勵
+      const topMale = male.slice(0,3).map(x=>x.name);
+      const topFemale = female.slice(0,3).map(x=>x.name);
+      const exclude = new Set([...topMale, ...topFemale]);
+      const voucherFiltered = voucher.filter(x=>!exclude.has(x.name));
+      voucherFiltered.sort((a,b)=>b.score-a.score);
+      document.getElementById('finalVoucher').innerHTML =
+        voucherFiltered.map(v=>`<tr><td>${v.name}</td><td>${v.score}</td><td>${v.prize}</td></tr>`).join('');
 
-      // 如果三區都空，跳過該月
-      if (!per.length && !team.length && !region.length) continue;
+      // 團體前三名
+      const teams = {};
+      rows.forEach(r=>{
+        const t = r.c[iTeam]?.v;
+        const avg = Number(r.c[iTavg]?.v);
+        if (!t || isNaN(avg)) return;
+        if (!teams[t] || avg > teams[t].avg) teams[t] = { avg };
+      });
+      const teamArr = Object.entries(teams)
+        .map(([name, o])=>({ name, avg:o.avg }))
+        .sort((a,b)=>b.avg-a.avg)
+        .slice(0,3);
+      document.getElementById('finalTeam').innerHTML =
+        teamArr.map((t,i)=>`<tr><td>${i+1}</td><td>${t.name}</td><td>${t.avg}</td></tr>`).join('');
 
-      // 建立月榜區塊
-      const section = document.createElement('section');
-      section.style.width = '100%'; // 修改為 100% 適配手機版
-      section.style.margin = '0 auto 20px';
-      section.style.display = 'flex';
-      section.style.flexDirection = 'column';
-      section.style.flex = '1 1 0%';
-
-      // RWD 支援
-      section.style.maxWidth = '100%';
-      section.style.boxSizing = 'border-box';
-
-      const header = document.createElement('h2');
-      header.textContent = `${sheet.replace('Month', '')}`;
-      header.style.cursor = 'pointer';
-      header.style.background = 'var(--lightN)';
-      header.style.padding = '10px';
-      header.style.borderRadius = '5px';
-      header.style.textAlign = 'center';
-
-      const content = document.createElement('div');
-      content.style.overflow = 'hidden';
-      content.style.transition = 'max-height 0.3s ease';
-      content.style.maxHeight = '0';
-      content.style.display = 'flex';
-      content.style.flexDirection = 'column';
-      content.style.gap = '20px';
-
-      // 每個月的 flag
-      let isExpanded = false;
-
-      header.onclick = () => {
-        if (!isExpanded) {
-        content.style.maxHeight = content.scrollHeight + 'px';
-        } else {
-        content.style.maxHeight = '0';
-        }
-        isExpanded = !isExpanded;
-      };
-
-      content.innerHTML = `
-      <div style="display: flex; flex-direction: row; gap: 10px; flex-wrap: wrap;">
-        <div style="flex: 1 1 300px; min-width: 300px;">
-        <h3>1.個人月排名</h3>
-        <table>
-          <thead>
-          <tr><th>別名</th><th>個人積分</th><th>個人月排名</th></tr>
-          </thead>
-          <tbody>${per.map(r => `<tr>${r.map(v => `<td>${v}</td>`).join('')}</tr>`).join('')}</tbody>
-        </table>
-        </div>
-        <div style="flex: 1 1 300px; min-width: 300px;">
-        <h3>2.團隊月排名</h3>
-        <table>
-          <thead>
-          <tr><th>隊名</th><th>團隊積分</th><th>團隊月排名</th></tr>
-          </thead>
-          <tbody>${team.map(r => `<tr>${r.map(v => `<td>${v}</td>`).join('')}</tr>`).join('')}</tbody>
-        </table>
-        </div>
-        <div style="flex: 1 1 300px; min-width: 300px;">
-        <h3>3.地區月排名</h3>
-        <table>
-          <thead>
-          <tr><th>地區</th><th>地區月積分</th><th>地區月排名</th></tr>
-          </thead>
-          <tbody>${region.map(r => `<tr>${r.map(v => `<td>${v}</td>`).join('')}</tr>`).join('')}</tbody>
-        </table>
-        </div>
-      </div>
-      `;
-
-      section.appendChild(header);
-      section.appendChild(content);
-      monthlyContainer.appendChild(section);
-
-      // 如果是第一個月榜，預設展開
-      if (!firstSection) {
-        firstSection = content;
-        content.style.maxHeight = content.scrollHeight + 'px';
-        isExpanded = true;
-      }
-      }
-
-      // 移除 Skeleton
-      skeleton.remove();
-
-      // 如果沒有任何月榜資料，隱藏月榜按鈕
-      if (!monthlyContainer.innerHTML.trim()) {
-      btnM.style.display = 'none';
-      if (btnM.classList.contains('active')) btnW.click();
-      } else {
-      btnM.style.display = '';
-      }
-
-      // 修改 RWD 支援
-      const mediaStyle = document.createElement('style');
-      mediaStyle.textContent = `
-      @media (max-width: 600px) {
-      section {
-        width: 100%;
-      }
-      }
-      `;
-      document.head.appendChild(mediaStyle);
+      // 倒數三名
+      const all = [];
+      rows.forEach(r=>{
+        const name = r.c[iName]?.v;
+        const score = Number(r.c[iScore]?.v);
+        if (!name || isNaN(score)) return;
+        all.push({ name, score });
+      });
+      all.sort((a,b)=>a.score-b.score);
+      document.getElementById('finalLast').innerHTML =
+        all.slice(0,3).map((p,i)=>`<tr><td>${i+1}</td><td>${p.name}</td><td>${p.score}</td></tr>`).join('');
     }
 
-    // 初始
-    updateWeekly();
-    updateMonthly();
+    // 初始 - 載入時預設顯示最終結果
+    updateFinal();
+
   </script>
 </body>
 </html>
